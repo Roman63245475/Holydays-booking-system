@@ -439,3 +439,6 @@ fabric.properties
 .idea/**/azureSettings.xml
 
 # End of https://www.toptal.com/developers/gitignore/api/rider,aspnetcore,redis,webstorm
+
+# Docker compose secrets
+.env

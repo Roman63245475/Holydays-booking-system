@@ -32,7 +32,7 @@ builder.Services.AddScoped<Database>(
 
 builder.Services.AddStackExchangeRedisCache(options =>
 {
-    options.Configuration = "localhost:6379";
+    options.Configuration = builder.Configuration.GetConnectionString("redis") ?? "localhost:6379";
     options.InstanceName = "MyApp:";
 });
 
