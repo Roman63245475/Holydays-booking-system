@@ -7,6 +7,8 @@ public class User
     public string email { get; set; }
     public string password { get; set; }
     
+    public decimal salary { get; set; }
+    
     public Role role { get; set; }
 
     public User()
