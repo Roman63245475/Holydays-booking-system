@@ -5,8 +5,8 @@ import {Admin} from "@/Admin.tsx";
 
 export function App() {
   return (
-      // <LogInForm />
-      <Admin />
+      <LogInForm />
+      //<Admin />
   )
 }
 

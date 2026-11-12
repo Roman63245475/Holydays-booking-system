@@ -24,7 +24,7 @@ builder.Services.AddOpenApiDocument(document =>
 
 var connection_string = builder.Configuration.GetConnectionString("connection_string")
     ?? throw new InvalidOperationException("Connection string 'connection_string' not found.");
-var db = DatabaseConfiguration.Create(connection_string);
+using var db = DatabaseConfiguration.Create(connection_string);
 DatabaseInitializer.Initialize(db);
 builder.Services.AddScoped<Database>(
     _ => DatabaseConfiguration.Create(connection_string)
@@ -46,6 +46,8 @@ builder.Services.AddSession(options =>
 });
 builder.Services.AddScoped<LoginController>();
 builder.Services.AddScoped<LoginService>();
+builder.Services.AddScoped<HolidayAccountsService>();
+builder.Services.AddScoped<UserService>();
 builder.Services.AddControllers();
 
 var app = builder.Build();

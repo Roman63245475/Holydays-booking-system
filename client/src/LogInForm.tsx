@@ -1,17 +1,38 @@
 import {useState} from "react";
 import type {ReactFormState} from "react-dom/client";
-import { api } from "./api/client";
-import type { ClientUser, LoginUserDTO } from "./api/Api";
+import { loginApi } from "./api/client";
+import {type ClientUser, type LoginUserDTO, Role} from "./api/Api";
+import {useNavigate} from "react-router";
+import storage from "@/storage.tsx";
 const LogInForm = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const navigator = useNavigate();
 
     async function handleSubmit(e: React.FormEvent){
         e.preventDefault();
         const user: LoginUserDTO = {email, password};
-        const response = await api.login(user);
-        console.log(response);
+        const response = await loginApi.login(user);
+        storage.set('user', response);
+        redirect(response.role)
     }
+
+    function redirect(role: Role | undefined){
+        switch(role){
+            case Role.User:
+                console.log("Redirect to user's page");
+                break;
+            case Role.Accountant:
+                console.log("Redirect to accountant's page");
+                break;
+            case Role.Admin:
+                navigator('admin_page/')
+                break;
+            default:
+                console.log("Login Failed");
+        }
+    }
+
     return (
         <form onSubmit={handleSubmit}>
             <div>

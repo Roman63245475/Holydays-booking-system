@@ -19,7 +19,7 @@ public abstract class HolidayAccount
     
     public bool active { get; set; }
 
-    protected HolidayAccount(Guid id, Guid user_id, DateOnly earningPeriodStart, DateOnly earningPeriodEnd, DateOnly usagePeriodStart, DateOnly usagePeriodEnd, HolidayType holidayType, bool active)
+    protected HolidayAccount(Guid user_id, DateOnly earningPeriodStart, DateOnly earningPeriodEnd, DateOnly usagePeriodStart, DateOnly usagePeriodEnd, HolidayType holidayType, bool active)
     {
         this.id  = id;
         this.user_id = user_id;

@@ -13,6 +13,7 @@ public class UserMapping
         builder.Entity<User>().Property(x => x.email).HasColumnName("email").IsNullable(false);
         builder.Entity<User>().Property(x => x.password).HasColumnName("password").IsNullable(false);
         builder.Entity<User>().Property(x => x.salary).HasColumnName("salary").IsNullable(false);
+        builder.Entity<User>().Property(x => x.start_date).HasColumnName("start_date").IsNullable(false);
         builder.Entity<User>().Property(x => x.role).HasColumnName("role").IsNullable(false);
     }
 }

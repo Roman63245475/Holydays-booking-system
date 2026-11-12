@@ -7,8 +7,8 @@ public sealed class LawHolidays: HolidayAccount
     
     private decimal remaining_holiday_days { get; set; }
 
-    public LawHolidays(Guid id, Guid user_id, DateOnly earningPeriodStart, DateOnly earningPeriodEnd,
-        DateOnly usagePeriodStart, DateOnly usagePeriodEnd, HolidayType holidayType, bool active, decimal earned_holiday_days, decimal used_holiday_days): base(id, user_id,  earningPeriodStart, earningPeriodEnd, usagePeriodStart, usagePeriodEnd, holidayType, active) 
+    public LawHolidays(Guid user_id, DateOnly earningPeriodStart, DateOnly earningPeriodEnd,
+        DateOnly usagePeriodStart, DateOnly usagePeriodEnd, HolidayType holidayType, bool active, decimal earned_holiday_days, decimal used_holiday_days): base(user_id,  earningPeriodStart, earningPeriodEnd, usagePeriodStart, usagePeriodEnd, holidayType, active) 
     {
         this.earned_holiday_days = earned_holiday_days;
         this.used_holiday_days = used_holiday_days;

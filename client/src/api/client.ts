@@ -1,5 +1,11 @@
-import { ApiClient } from "./Api";
+import { LoginClient, UserClient } from "./Api";
 
-export const api = new ApiClient("http://localhost:5232", {
-  fetch: (url, init) => fetch(url, { ...init, credentials: "include" }),
-});
+const baseUrl = "http://localhost:5232";
+
+// credentials: "include" sends the session cookie with every request
+const http = {
+  fetch: (url: RequestInfo, init?: RequestInit) => fetch(url, { ...init, credentials: "include" }),
+};
+
+export const loginApi = new LoginClient(baseUrl, http);
+export const userApi = new UserClient(baseUrl, http);
