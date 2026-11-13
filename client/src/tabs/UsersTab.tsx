@@ -8,12 +8,15 @@ export function UsersTab(){
     return(
         <div className="center-v">
             {
-                createUserOpen && <CreateUser />
+                createUserOpen && <CreateUser setMenuOpen={setCreateUserOpen} />
             }
-            <h1>Users</h1>
-            <button onClick={() => setCreateUserOpen(true)}>Create User</button>
-            <table>
-                <thead>
+            <h1>User Management</h1>
+            <div className={"table-border"}>
+                <div className={"table-tools"}>
+                    <button onClick={() => setCreateUserOpen(true)}>Create User <span className={"icon create-user-icon"} /></button>
+                </div>
+                <table>
+                    <thead>
                     <tr>
                         <th>Name</th>
                         <th>Email</th>
@@ -22,11 +25,171 @@ export function UsersTab(){
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
-                </thead>
-                <tbody>
-
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                        <tr>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                            <td>Smth</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     )
 }

@@ -29,13 +29,14 @@ export function Admin(){
             <aside className={"side-menu"}>
                 <h1>Admin Page</h1>
                 <p>Welcome [admin]</p>
-                <div className={"center-v g-10"}>
-                    <button onClick={() => setActiveTab('users')}>Users and Roles</button>
-                    <button onClick={() => setActiveTab('earnings')}>Holiday Earnings</button>
-                    <button onClick={() => setActiveTab('schedule')}>Work Schedules</button>
-                    <button onClick={() => setActiveTab('calendar')}>Company Calendar</button>
-                    <button onClick={() => setActiveTab('activity')}>Recent Activity</button>
+                <div className={"center-v"}>
+                    <button onClick={() => setActiveTab('users')}>Users and Roles <span className={"icon users-icon"} /></button>
+                    <button onClick={() => setActiveTab('earnings')}>Holiday Earnings <span className={"icon earn-icon"} /></button>
+                    <button onClick={() => setActiveTab('schedule')}>Work Schedules <span className={"icon schedule-icon"} /></button>
+                    <button onClick={() => setActiveTab('calendar')}>Company Calendar <span className={"icon calendar-icon"} /></button>
+                    <button onClick={() => setActiveTab('activity')}>Recent Activity <span className={"icon activity-icon"} /></button>
                 </div>
+                <button className={"g-6"}>Log Out <span className={"icon log-out-icon"} /></button>
             </aside>
             <div className={"w-100"}>
                 {
