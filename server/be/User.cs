@@ -12,6 +12,10 @@ public class User
     public DateOnly start_date { get; set; }
     public Role role { get; set; }
 
+    private LawHolidays lawHolidays;
+
+    private AgreedHolidays agreed_holidays;
+
     public User()
     {
 
@@ -28,5 +32,23 @@ public class User
         this.start_date = start_date;
     }
     
-    
+    public void set_law_golidays(LawHolidays law_holidays)
+    {
+        this.lawHolidays = law_holidays;
+    }
+
+    public void set_agreed_holidays(AgreedHolidays agreed_holidays)
+    {
+        this.agreed_holidays = agreed_holidays;
+    }
+
+    public LawHolidays get_law_holidays()
+    {
+        return this.lawHolidays;
+    }
+
+    public AgreedHolidays get_agreed_holidays()
+    {
+        return this.agreed_holidays;
+    }
 }
