@@ -13,6 +13,10 @@ public static class DatabaseConfiguration
         var builder = new FluentMappingBuilder(mappingSchema);
 
         UserMapping.Configure(builder);
+        LawHolidayMapping.Configure(builder);
+        AgreedHolidayMapping.Configure(builder);
+        LawHolidaysHistoryMapping.Configure(builder);
+        AgreedHolidaysHistoryMapping.Configure(builder);
 
         builder.Build();
 

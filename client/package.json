@@ -7,11 +7,12 @@
     "dev": "bun --hot src/index.ts",
     "build": "bun build ./src/index.html --outdir=dist --sourcemap --target=browser --minify --define:process.env.NODE_ENV='\"production\"' --env='BUN_PUBLIC_*'",
     "start": "NODE_ENV=production bun src/index.ts",
-    "gen-api": "nswag openapi2tsclient /runtime:Net100 /input:http://localhost:5232/swagger/v1/swagger.json /output:src/api/Api.ts /template:Fetch /typeStyle:Interface /className:ApiClient"
+    "gen-api": "nswag openapi2tsclient /runtime:Net100 /input:http://localhost:5232/swagger/v1/swagger.json /output:src/api/Api.ts /template:Fetch /typeStyle:Interface /className:{controller}Client"
   },
   "dependencies": {
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "react-router": "^8.5.1"
   },
   "devDependencies": {
     "@types/bun": "latest",
