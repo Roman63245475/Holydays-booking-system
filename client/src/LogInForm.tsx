@@ -21,12 +21,13 @@ const LogInForm = () => {
         switch(role){
             case Role.User:
                 console.log("Redirect to user's page");
+                navigator('/user_page')
                 break;
             case Role.Accountant:
                 console.log("Redirect to accountant's page");
                 break;
             case Role.Admin:
-                navigator('admin_page/')
+                navigator('/admin_page')
                 break;
             default:
                 console.log("Login Failed");

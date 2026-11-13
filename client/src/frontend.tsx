@@ -11,6 +11,7 @@ import { App } from "./App";
 import {createBrowserRouter, RouterProvider} from "react-router";
 import LogInForm from "@/LogInForm.tsx";
 import {Admin} from "@/Admin.tsx";
+import {User} from "@/User.tsx";
 
 const elem = document.getElementById("root")!;
 const app = (
@@ -20,8 +21,13 @@ const app = (
             element: <LogInForm/>
         },
         {
-          path: 'admin_page',
+          path: '/admin_page',
           element: <Admin/>
+        },
+
+        {
+            path: '/user_page',
+            element: <User/>
         }
     ])}/>
 );
