@@ -11,11 +11,13 @@ public class UserService
 
     private Database db;
     private HolidayAccountsService holidayAccountsService;
+    private HolidayHistoryService holidayHistoryService;
 
-    public UserService(Database db, HolidayAccountsService holidayAccountsService)
+    public UserService(Database db, HolidayAccountsService holidayAccountsService, HolidayHistoryService holidayHistoryService)
     {
         this.db = db;
         this.holidayAccountsService = holidayAccountsService;
+        this.holidayHistoryService = holidayHistoryService;
     }
 
     public async Task create_user(User user)
@@ -28,7 +30,9 @@ public class UserService
         try
         {
             User inserted = await db.users.InsertWithOutputAsync(user);
-            await holidayAccountsService.initialize_users_holidays_accountsService(inserted);
+            var (law_holidays, agreed_holidays) = await holidayAccountsService.initialize_users_holidays_accounts(inserted);
+            await holidayHistoryService.create_history_records(law_holidays, agreed_holidays);
+
             await transaction.CommitAsync();
         }
         catch (Exception e)

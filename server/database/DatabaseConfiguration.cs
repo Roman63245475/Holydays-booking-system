@@ -15,6 +15,8 @@ public static class DatabaseConfiguration
         UserMapping.Configure(builder);
         LawHolidayMapping.Configure(builder);
         AgreedHolidayMapping.Configure(builder);
+        LawHolidaysHistoryMapping.Configure(builder);
+        AgreedHolidaysHistoryMapping.Configure(builder);
 
         builder.Build();
 

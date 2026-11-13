@@ -47,7 +47,9 @@ builder.Services.AddSession(options =>
 builder.Services.AddScoped<LoginController>();
 builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<HolidayAccountsService>();
+builder.Services.AddScoped<HolidayHistoryService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<AccuralService>();
 builder.Services.AddControllers();
 
 var app = builder.Build();
