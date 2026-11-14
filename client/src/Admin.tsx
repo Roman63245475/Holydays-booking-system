@@ -7,6 +7,7 @@ import {CalendarTab} from "@/tabs/CalendarTab.tsx";
 import {ActivityTab} from "@/tabs/ActivityTab.tsx";
 import {useNavigate} from "react-router";
 import {loginApi} from "@/api/client.ts";
+import storage from "@/storage.tsx";
 
 export function Admin(){
 
@@ -39,9 +40,10 @@ export function Admin(){
         }
     }
 
+
     async function logOut(){
         await loginApi.logout()
-        localStorage.removeItem('user')
+        storage.removeItem('user')
         navigate('/')
     }
 

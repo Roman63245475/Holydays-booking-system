@@ -1,6 +1,7 @@
 using be;
 using database;
 using LinqToDB;
+using LinqToDB.Async;
 using Microsoft.AspNetCore.Identity;
 
 namespace service;
@@ -41,6 +42,11 @@ public class UserService
             throw new Exception("Failed to create new user", e);
         }
     }
-    
-    
+
+    public async Task<List<ClientUser>> get_all_users()
+    {
+        List<ClientUser> users = await db.users.Select(u => new ClientUser
+            { name = u.name, email = u.email, role = u.role, salary = u.salary, start_date = u.start_date }).ToListAsync();
+        return users;
+    }
 }

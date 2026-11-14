@@ -13,6 +13,7 @@ const LogInForm = () => {
     async function handleSubmit(e: React.FormEvent){
         e.preventDefault();
         const user: LoginUserDTO = {email, password};
+
         const response = await loginApi.login(user);
         storage.set('user', response);
         redirect(response.role)

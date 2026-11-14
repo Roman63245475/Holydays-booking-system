@@ -29,4 +29,10 @@ public class UserController: ControllerBase
             return BadRequest(e.Message);
         }
     }
+
+    [HttpGet(nameof(get_all_users))]
+    public async Task<List<ClientUser>> get_all_users()
+    {
+        return await userService.get_all_users();
+    }
 }
