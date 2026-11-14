@@ -1,3 +1,4 @@
+import "./index.css";
 import {useState} from "react";
 import type {ReactFormState} from "react-dom/client";
 import { loginApi } from "./api/client";
@@ -35,17 +36,20 @@ const LogInForm = () => {
     }
 
     return (
-        <form onSubmit={handleSubmit}>
-            <div>
-                <label>Email: </label>
-                <input type={'email'} name={'email'} placeholder={'Enter email'} onChange={e => setEmail(e.target.value)}></input>
-            </div>
-            <div>
-                <label>Password: </label>
-                <input type={'password'} name={'password'} placeholder={'Enter password'} onChange={e => setPassword(e.target.value)}></input>
-            </div>
-            <button type={'submit'}>Log in</button>
-        </form>
+        <div className={"flex center-v h-100 w-100"}>
+            <form onSubmit={handleSubmit} className={"flex center-v pane g-10"}>
+                <h1>Authentication</h1>
+                <div>
+                    <label>Email: </label>
+                    <input type={'email'} name={'email'} placeholder={'Enter email'} onChange={e => setEmail(e.target.value)}></input>
+                </div>
+                <div>
+                    <label>Password: </label>
+                    <input type={'password'} name={'password'} placeholder={'Enter password'} onChange={e => setPassword(e.target.value)}></input>
+                </div>
+                <button type={'submit'}>Log in</button>
+            </form>
+        </div>
     )
 }
 
