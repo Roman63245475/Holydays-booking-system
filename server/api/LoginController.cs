@@ -23,4 +23,10 @@ public class LoginController: ControllerBase
         HttpContext.Session.SetString("role", login_user.role.ToString());
         return Ok(new ClientUser(login_user.name, login_user.email, login_user.role));
     }
+
+    [HttpPost("logout")]
+    public IActionResult Logout() {
+        HttpContext.Session.Clear();
+        return Ok();
+    }
 }

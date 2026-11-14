@@ -1,3 +1,4 @@
+import "../index.css";
 import {useState} from "react";
 import {CreateUser} from "@/CreateUser.tsx";
 
@@ -6,7 +7,7 @@ export function UsersTab(){
     const [createUserOpen, setCreateUserOpen] = useState(false);
 
     return(
-        <div className="center-v">
+        <div className={"flex center-v p-16"}>
             {
                 createUserOpen && <CreateUser setMenuOpen={setCreateUserOpen} />
             }
@@ -21,172 +22,13 @@ export function UsersTab(){
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>Schedule</th>
+                        <th>Salary</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        {/*<th>Actions</th>*/}
                     </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
-                        <tr>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                            <td>Smth</td>
-                        </tr>
+
                     </tbody>
                 </table>
             </div>

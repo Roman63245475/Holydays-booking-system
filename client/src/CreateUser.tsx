@@ -27,10 +27,10 @@ export function CreateUser({ setMenuOpen }: CreateUserProps) {
     }
 
     return(
-        <div onClick={() => setMenuOpen(false)} className={"menu-bg center-v"}>
-            <div onClick={(e) => e.stopPropagation()} className={"menu center-v"}>
-                <h1>Create user menu</h1>
-                <form onSubmit={handleSubmit}>
+        <div onClick={() => setMenuOpen(false)} className={"menu-bg flex center-v"}>
+            <div onClick={(e) => e.stopPropagation()} className={"menu flex center-v"}>
+                <form onSubmit={handleSubmit} className={"w-50 flex center-v g-6"}>
+                    <h1>Create New User</h1>
                     <div>
                         <label>Name: </label>
                         <input type={'text'} name={'name'} placeholder={'Enter name'} onChange={e => setName(e.target.value)}></input>
