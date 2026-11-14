@@ -16,6 +16,10 @@ public abstract class HolidayAccount
     
     public HolidayType holiday_type { get; set; }
     private string name { get; set; }
+
+    protected decimal month_rate;
+    
+    protected HolidayHistory holiday_history { get; set; }
     
     public bool active { get; set; }
 
@@ -32,6 +36,12 @@ public abstract class HolidayAccount
         define_name();
     }
 
+    // adds an accrued amount (from history.accrued) to the earned total and recalculates remaining
+    public abstract void add_earned(decimal amount);
+
+    // returns the earned total (earned_holiday_days / earned_holiday_hours)
+    public abstract decimal get_earned();
+
     private void define_name()
     {
         switch (this.holiday_type)
@@ -47,10 +57,20 @@ public abstract class HolidayAccount
                 break;
         }
     }
+    
+    public HolidayHistory get__holiday_history()
+    {
+        return this.holiday_history;
+    }
 
     public HolidayAccount()
     {
         
+    }
+    
+    public decimal get_month_rate()
+    {
+        return this.month_rate;
     }
 
 }
