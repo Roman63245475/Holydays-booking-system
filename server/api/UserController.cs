@@ -1,3 +1,4 @@
+using System.Net;
 using be;
 using Microsoft.AspNetCore.Mvc;
 using service;
@@ -35,4 +36,24 @@ public class UserController: ControllerBase
     {
         return await userService.get_all_users();
     }
+
+    [HttpGet(nameof(me))]
+    /**
+     * An endpoint created to get the certain users data from their
+     * session after they logged in.
+     */
+    public async Task<ActionResult<ClientUser>> me()
+    {
+        var userValue = HttpContext.Session.GetString("userId");
+        if (!Guid.TryParse(userValue, out var userId))
+            return Unauthorized();
+
+        var user = await userService.get_user(userId);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+        return Ok(user);
+    }
+    
 }
