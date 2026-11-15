@@ -54,10 +54,10 @@ export function Admin(){
                 <p>Welcome {name}</p>
                 <div className={"flex center-v"}>
                     <button onClick={() => setActiveTab('users')}>Users and Roles <span className={"icon users-icon"} /></button>
-                    <button onClick={() => setActiveTab('earnings')}>Holiday Earnings <span className={"icon earn-icon"} /></button>
-                    <button onClick={() => setActiveTab('schedule')}>Work Schedules <span className={"icon schedule-icon"} /></button>
-                    <button onClick={() => setActiveTab('calendar')}>Company Calendar <span className={"icon calendar-icon"} /></button>
-                    <button onClick={() => setActiveTab('activity')}>Recent Activity <span className={"icon activity-icon"} /></button>
+                    {/*<button onClick={() => setActiveTab('earnings')}>Holiday Earnings <span className={"icon earn-icon"} /></button>*/}
+                    {/*<button onClick={() => setActiveTab('schedule')}>Work Schedules <span className={"icon schedule-icon"} /></button>*/}
+                    {/*<button onClick={() => setActiveTab('calendar')}>Company Calendar <span className={"icon calendar-icon"} /></button>*/}
+                    {/*<button onClick={() => setActiveTab('activity')}>Recent Activity <span className={"icon activity-icon"} /></button>*/}
                 </div>
                 <button className={"g-6"} onClick={logOut}>Log Out <span className={"icon log-out-icon"} /></button>
             </aside>
