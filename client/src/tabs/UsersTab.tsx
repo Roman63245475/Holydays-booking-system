@@ -28,7 +28,7 @@ export function UsersTab(){
     return(
         <div className={"flex center-v p-16"}>
             {
-                createUserOpen && <CreateUser setMenuOpen={setCreateUserOpen} />
+                createUserOpen && <CreateUser setMenuOpen={setCreateUserOpen} submitted={loadUsers} />
             }
             <h1>User Management</h1>
             <div className={"table-border"}>

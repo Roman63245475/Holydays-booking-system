@@ -43,7 +43,7 @@ export function Admin(){
 
     async function logOut(){
         await loginApi.logout()
-        storage.removeItem('user')
+        storage.remove('user')
         navigate('/')
     }
 

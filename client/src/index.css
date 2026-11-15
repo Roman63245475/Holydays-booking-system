@@ -67,6 +67,7 @@ option {
 form{
   padding: 16px;
   width: 30%;
+  min-width: 500px;
   box-shadow: 0 4px 8px 5px rgba(0, 0, 0, 0.2)
 }
 
@@ -219,10 +220,7 @@ button:hover{
 .menu{
   position: fixed;
   display: flex;
-  width: 35%;
-  min-width: 550px;
-  height: 50vh;
-  padding: 16px;
+  padding: 24px;
   background-color: #1e293b;
 }
 
