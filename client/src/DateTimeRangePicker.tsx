@@ -20,25 +20,19 @@ export function DateTimeRangePicker({ onChange }: Props) {
         endTime: "17:30",
     });
 
-    const start = new Date(
-        `${range.startDate}T${range.startTime}:00`
-    );
-
-    const end = new Date(
-        `${range.endDate}T${range.endTime}:00`
-    );
+    const start = range.startDate ? new Date(`${range.startDate}T00:00:00`) : new Date(NaN);
+    const end = range.endDate ? new Date(`${range.endDate}T00:00:00`) : new Date(NaN);
 
     const isValid =
         !!range.startDate &&
-        !!range.startTime &&
         !!range.endDate &&
-        !!range.endTime &&
         !isNaN(start.getTime()) &&
         !isNaN(end.getTime()) &&
-        end > start;
+        end >= start;
 
-    const duration = isValid
-        ? Math.round((end.getTime() - start.getTime()) / 60000)
+    // Count whole selected weekdays: 7.5 hours Monday–Thursday and 7 hours Friday.
+    const requestedWorkMinutes = isValid
+        ? getWorkingMinutes(start, end)
         : 0;
 
     const update = (field: keyof DateTimeRange, value: string) => {
@@ -47,8 +41,8 @@ export function DateTimeRangePicker({ onChange }: Props) {
         onChange?.(updated);
     };
 
-    const hours = Math.floor(duration / 60);
-    const minutes = duration % 60;
+    const hours = Math.floor(requestedWorkMinutes / 60);
+    const minutes = requestedWorkMinutes % 60;
 
     return (
         <div className="w-full max-w-2xl rounded-xl border p-5 space-y-5">
@@ -74,14 +68,14 @@ export function DateTimeRangePicker({ onChange }: Props) {
                         className="w-full rounded-lg border p-3"
                     />
 
+                    {/* Clock input commented out for now.
                     <input
                         type="time"
                         value={range.startTime}
-                        onChange={(e) =>
-                            update("startTime", e.target.value)
-                        }
+                        onChange={(e) => update("startTime", e.target.value)}
                         className="w-full rounded-lg border p-3"
                     />
+                    */}
                 </div>
 
                 {/* END */}
@@ -100,21 +94,20 @@ export function DateTimeRangePicker({ onChange }: Props) {
                         className="w-full rounded-lg border p-3"
                     />
 
+                    {/* Clock input commented out for now.
                     <input
                         type="time"
                         value={range.endTime}
-                        onChange={(e) =>
-                            update("endTime", e.target.value)
-                        }
+                        onChange={(e) => update("endTime", e.target.value)}
                         className="w-full rounded-lg border p-3"
                     />
+                    */}
                 </div>
             </div>
 
             {!isValid && (
                 <p className="text-sm text-red-500">
-                    Please select an end date and time
-                    after the start.
+                    Please select an end date on or after the start date.
                 </p>
             )}
 
@@ -122,7 +115,7 @@ export function DateTimeRangePicker({ onChange }: Props) {
                 <div className="rounded-lg bg-muted p-4">
                     
                     <p className="text-xl font-semibold">
-                        <button className="request-button">Send request for {hours}h {minutes}m</button>
+                        <button className="request-button">Send request for {hours}h</button>
                         
                     </p>
                 </div>
@@ -130,4 +123,19 @@ export function DateTimeRangePicker({ onChange }: Props) {
 
         </div>
     );
+}
+
+function getWorkingMinutes(start: Date, end: Date): number {
+    let totalMinutes = 0;
+    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+
+    while (day <= end) {
+        const weekday = day.getDay(); // Sunday = 0, Friday = 5, Saturday = 6
+        if (weekday >= 1 && weekday <= 5) {
+            totalMinutes += weekday === 5 ? 7 * 60 : 7.5 * 60;
+        }
+        day.setDate(day.getDate() + 1);
+    }
+
+    return Math.round(totalMinutes);
 }

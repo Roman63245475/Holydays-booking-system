@@ -41,8 +41,9 @@ export function User() {
                 {activeTab === "home" ? (
                     <>
                         <h1>Good Morning, {user?.name}</h1>
-                        <h2>Salary: {user?.salary ?? "—"} DKK</h2>
-                        <h2>Balance of available days for a holiday:X (X hours) </h2>
+                        <h2>Earned Holiday hours: {user?.earned_holiday_hours ?? "—"} h</h2>
+                        <h2>Used Holiday hours: {user?.used_holiday_hours}</h2>
+                        <h2>Balance of available days for a holiday:{user?.available_holiday_hours}h ({(user?.available_holiday_hours/24).toFixed(2)} Days) </h2>
                     </>
                 ) : activeTab === "history" ? (
                     <h2>Your holidays in the past</h2>

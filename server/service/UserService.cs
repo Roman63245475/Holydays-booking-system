@@ -50,17 +50,27 @@ public class UserService
         return users;
     }
 
-    public async Task<object?> get_user(Guid userId)
+    public async Task<UserViewPage?> get_user(Guid userId)
     {
-        return await db.users.Where(u => u.id == userId).Select(u => new ClientUser
-        {
-            id = u.id,
-            name = u.name,
-            email = u.email,
-            role = u.role,
-            salary = u.salary,
-            start_date = u.start_date
-            
-        }).FirstOrDefaultAsync();
+        return await db.users
+            .Join(db.agreed_holidays,
+                u => u.id,
+                d => d.user_id,
+                (u, d) => new { User = u, Agreed = d })
+            .Join(db.law_holidays,
+                x => x.User.id,
+                l => l.user_id,
+                (x, l) => new { x.User, x.Agreed, Law = l })
+            .Where(x => x.User.id == userId)
+            .Select(x => new UserViewPage
+            {
+                name = x.User.name,
+                email = x.User.email,
+                earned_holiday_hours = x.Agreed.earned_holiday_hours + x.Law.earned_holiday_days*24,
+                used_holiday_hours = x.Agreed.used_holiday_hours +  x.Law.used_holiday_days*24,
+                available_holiday_hours =
+                    (x.Agreed.earned_holiday_hours+x.Law.earned_holiday_days) - (x.Agreed.used_holiday_hours +x.Law.used_holiday_days*24)
+            })
+            .FirstOrDefaultAsync();
     }
 }
