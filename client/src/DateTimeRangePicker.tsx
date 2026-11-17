@@ -120,11 +120,10 @@ export function DateTimeRangePicker({ onChange }: Props) {
 
             {isValid && (
                 <div className="rounded-lg bg-muted p-4">
-                    <p className="text-sm text-muted-foreground">
-                        Selected duration
-                    </p>
+                    
                     <p className="text-xl font-semibold">
-                        {hours}h {minutes}m
+                        <button className="request-button">Send request for {hours}h {minutes}m</button>
+                        
                     </p>
                 </div>
             )}

@@ -49,4 +49,18 @@ public class UserService
             { name = u.name, email = u.email, role = u.role, salary = u.salary, start_date = u.start_date }).ToListAsync();
         return users;
     }
+
+    public async Task<object?> get_user(Guid userId)
+    {
+        return await db.users.Where(u => u.id == userId).Select(u => new ClientUser
+        {
+            id = u.id,
+            name = u.name,
+            email = u.email,
+            role = u.role,
+            salary = u.salary,
+            start_date = u.start_date
+            
+        }).FirstOrDefaultAsync();
+    }
 }
