@@ -6,7 +6,7 @@ import {ScheduleTab} from "@/tabs/ScheduleTab.tsx";
 import {CalendarTab} from "@/tabs/CalendarTab.tsx";
 import {ActivityTab} from "@/tabs/ActivityTab.tsx";
 import {useNavigate} from "react-router";
-import {loginApi} from "@/api/client.ts";
+import {loginApi, timeApi} from "@/api/client.ts";
 import storage from "@/storage.tsx";
 
 export function Admin(){
@@ -40,6 +40,11 @@ export function Admin(){
         }
     }
 
+    async function simulate_month(){
+        const response = await timeApi.next_month()
+        console.log(response)
+    }
+
 
     async function logOut(){
         await loginApi.logout()
@@ -65,6 +70,7 @@ export function Admin(){
                 {
                     renderContent()
                 }
+                <button onClick={() => simulate_month()}>Simulate month</button>
             </div>
         </div>
     )

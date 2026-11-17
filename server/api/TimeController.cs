@@ -3,7 +3,7 @@ using service;
 
 namespace api;
 
-public class TimeController
+public class TimeController : ControllerBase
 {
 
     private AccuralService accuralService;
@@ -14,8 +14,16 @@ public class TimeController
     }
 
     [HttpPost(nameof(next_month))]
-    public void next_month()
+    public async Task<IActionResult> next_month()
     {
-        Console.WriteLine("sup");
+        try
+        {
+            await accuralService.accrue_holidays();
+            return Ok();
+        }
+        catch (Exception e)
+        {
+            return BadRequest();
+        }
     }
 }

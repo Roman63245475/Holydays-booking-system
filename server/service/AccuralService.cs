@@ -17,24 +17,36 @@ public class AccuralService
 
     public async Task accrue_holidays()
     {
-        List<LawHolidays> law_holidays_with_history = (await get_holidays_with_history(HolidayType.FerieEfterFerieloven))
-            .Cast<LawHolidays>()
-            .ToList();
-        List<AgreedHolidays> agreed_holidays_with_history = (await get_holidays_with_history(HolidayType.FerieUge))
-            .Cast<AgreedHolidays>()
-            .ToList();
+        var transaction = await db.BeginTransactionAsync();
+        try
+        {
+            List<LawHolidays> law_holidays_with_history = (await get_holidays_with_history(HolidayType.FerieEfterFerieloven))
+                .Cast<LawHolidays>()
+                .ToList();
+            List<AgreedHolidays> agreed_holidays_with_history = (await get_holidays_with_history(HolidayType.FerieUge))
+                .Cast<AgreedHolidays>()
+                .ToList();
 
-        await accrue_holidays_in_histories<LawHolidaysHistory>(law_holidays_with_history);
-        await accrue_holidays_in_histories<AgreedHolidaysHistory>(agreed_holidays_with_history);
+            await accrue_holidays_in_histories<LawHolidaysHistory>(law_holidays_with_history);
+            await accrue_holidays_in_histories<AgreedHolidaysHistory>(agreed_holidays_with_history);
         
-        update_accrue_holidays(law_holidays_with_history);
-        update_accrue_holidays(agreed_holidays_with_history);
+            update_accrue_holidays(law_holidays_with_history);
+            update_accrue_holidays(agreed_holidays_with_history);
         
-        await create_new_history_records<LawHolidaysHistory>(law_holidays_with_history);
-        await create_new_history_records<AgreedHolidaysHistory>(agreed_holidays_with_history);
+            await create_new_history_records<LawHolidaysHistory>(law_holidays_with_history);
+            await create_new_history_records<AgreedHolidaysHistory>(agreed_holidays_with_history);
 
-        await update_holiday_accounts<LawHolidays>(law_holidays_with_history, nameof(LawHolidays.earned_holiday_days));
-        await update_holiday_accounts<AgreedHolidays>(agreed_holidays_with_history, nameof(AgreedHolidays.earned_holiday_hours));
+            await update_holiday_accounts<LawHolidays>(law_holidays_with_history, nameof(LawHolidays.earned_holiday_days));
+            await update_holiday_accounts<AgreedHolidays>(agreed_holidays_with_history, nameof(AgreedHolidays.earned_holiday_hours));
+            await transaction.CommitAsync();
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.Message);
+            await transaction.RollbackAsync();
+            throw;
+        }
+        
 
         
         
