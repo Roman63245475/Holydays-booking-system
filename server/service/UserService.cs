@@ -69,7 +69,7 @@ public class UserService
                 earned_holiday_hours = x.Agreed.earned_holiday_hours + x.Law.earned_holiday_days*24,
                 used_holiday_hours = x.Agreed.used_holiday_hours +  x.Law.used_holiday_days*24,
                 available_holiday_hours =
-                    (x.Agreed.earned_holiday_hours+x.Law.earned_holiday_days) - (x.Agreed.used_holiday_hours +x.Law.used_holiday_days*24)
+                    (x.Agreed.earned_holiday_hours+x.Law.earned_holiday_days*24) - (x.Agreed.used_holiday_hours +x.Law.used_holiday_days*24)
             })
             .FirstOrDefaultAsync();
     }
