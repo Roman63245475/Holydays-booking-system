@@ -41,6 +41,7 @@ public sealed class LawHolidays: HolidayAccount
 
     private void set_month_rate()
     {
-        this.month_rate = 2.08m;
+        // days/hours earned per month, from parameters.json
+        this.month_rate = HolidayParameters.get_decimal("weeks1To5.month_rate");
     }
 }

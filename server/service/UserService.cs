@@ -23,7 +23,6 @@ public class UserService
 
     public async Task create_user(User user)
     {
-        
         PasswordHasher<User> hasher = new PasswordHasher<User>();
         var hashedPassword = hasher.HashPassword(user, user.password);
         user.password = hashedPassword;
@@ -32,7 +31,7 @@ public class UserService
         {
             User inserted = await db.users.InsertWithOutputAsync(user);
             var (law_holidays, agreed_holidays) = await holidayAccountsService.initialize_users_holidays_accounts(inserted);
-            await holidayHistoryService.create_history_records(law_holidays, agreed_holidays);
+            await holidayHistoryService.create_history_records(law_holidays, agreed_holidays, inserted.start_date);
 
             await transaction.CommitAsync();
         }
@@ -50,17 +49,31 @@ public class UserService
         return users;
     }
 
-    public async Task<object?> get_user(Guid userId)
+    public async Task<UserViewPage?> get_user(Guid userId)
     {
-        return await db.users.Where(u => u.id == userId).Select(u => new ClientUser
-        {
-            id = u.id,
-            name = u.name,
-            email = u.email,
-            role = u.role,
-            salary = u.salary,
-            start_date = u.start_date
-            
-        }).FirstOrDefaultAsync();
+        return await db.users
+            .Join(db.agreed_holidays,
+                u => u.id,
+                d => d.user_id,
+                (u, d) => new { User = u, Agreed = d })
+            .Join(db.law_holidays,
+                x => x.User.id,
+                l => l.user_id,
+                (x, l) => new { x.User, x.Agreed, Law = l })
+            .Where(x => x.User.id == userId)
+            .Select(x => new UserViewPage
+            {
+                name = x.User.name,
+                email = x.User.email,
+                agreed_earned_holiday_hours = x.Agreed.earned_holiday_hours,
+                
+                agreed_used_holiday_hours = x.Agreed.used_holiday_hours,
+                available_holiday_hours =
+                    x.Agreed.earned_holiday_hours - x.Agreed.used_holiday_hours,
+                law_earned_holiday_day = x.Law.earned_holiday_days,
+                law_used_holiday_day = x.Law.used_holiday_days,
+                available_holiday_days = x.Law.earned_holiday_days -  x.Law.used_holiday_days
+            })
+            .FirstOrDefaultAsync();
     }
 }

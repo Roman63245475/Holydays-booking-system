@@ -18,6 +18,28 @@ public class DatabaseInitializer
             "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email)"
         );
 
+        db.CreateTable<HolidayRequest>(
+            tableOptions: TableOptions.CreateIfNotExists
+        );
+        db.Execute(
+            "ALTER TABLE holiday_request ALTER COLUMN id SET DEFAULT gen_random_uuid()"
+        );
+
+        db.Execute(@"
+            DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint
+                        WHERE conname = 'fk_holiday_request_user'
+                    ) THEN
+                        ALTER TABLE holiday_request
+                        ADD CONSTRAINT fk_holiday_request_user
+                        FOREIGN KEY (user_id) REFERENCES users(id)
+                        ON DELETE CASCADE;
+                END IF;
+            END $$;"
+            );
+
         // law_holidays
         db.CreateTable<LawHolidays>(
             tableOptions: TableOptions.CreateIfNotExists

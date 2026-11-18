@@ -49,6 +49,7 @@ builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<HolidayAccountsService>();
 builder.Services.AddScoped<HolidayHistoryService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<RequestService>();
 builder.Services.AddScoped<AccuralService>();
 builder.Services.AddControllers();
 
