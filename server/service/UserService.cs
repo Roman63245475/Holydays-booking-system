@@ -23,7 +23,6 @@ public class UserService
 
     public async Task create_user(User user)
     {
-        
         PasswordHasher<User> hasher = new PasswordHasher<User>();
         var hashedPassword = hasher.HashPassword(user, user.password);
         user.password = hashedPassword;
@@ -32,7 +31,7 @@ public class UserService
         {
             User inserted = await db.users.InsertWithOutputAsync(user);
             var (law_holidays, agreed_holidays) = await holidayAccountsService.initialize_users_holidays_accounts(inserted);
-            await holidayHistoryService.create_history_records(law_holidays, agreed_holidays);
+            await holidayHistoryService.create_history_records(law_holidays, agreed_holidays, inserted.start_date);
 
             await transaction.CommitAsync();
         }
