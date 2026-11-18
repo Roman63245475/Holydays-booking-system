@@ -1,0 +1,43 @@
+{
+  "weeks1To5.month_rate": 2.08,
+  "weeks1To5.earningPeriodStartMonth": 9,
+  "weeks1To5.earningPeriodEndMonth": 8,
+  "weeks1To5.usagePeriodStartMonth": 9,
+  "weeks1To5.usagePeriodEndMonth": 12,
+  "weeks1To5.usagePeriodEndYearOffset": 1,
+
+  "holiday.mainHolidayLength": 15,
+  "holiday.mainHolidayStartMonth": 5,
+  "holiday.mainHolidayEndMonth": 9,
+  "holiday.mainHolidayNoticeMonths": 3,
+  "holiday.otherHolidayNoticeMonths": 1,
+
+  "week6.enabled": true,
+  "week6.hoursEarnedPerMonth": 3.083,
+  "week6.earningPeriodStartMonth": 1,
+  "week6.earningPeriodEndMonth": 12,
+  "week6.usagePeriodStartMonth": 5,
+  "week6.usagePeriodEndMonth": 4,
+  "week6.usagePeriodEndYearOffset": 2,
+
+  "workSchedule.monday": 7.5,
+  "workSchedule.tuesday": 7.5,
+  "workSchedule.wednesday": 7.5,
+  "workSchedule.thursday": 7.5,
+  "workSchedule.friday": 7.0,
+  "workSchedule.saturday": 0.0,
+  "workSchedule.sunday": 0.0,
+
+  "request.unit": "wholeDays",
+
+  "holidaySupplement.standardPercentage": 1.0,
+  "holidaySupplement.raisedPercentage": 1.48,
+
+  "payout.weeks1To5Percentage": 12.5,
+  "payout.week6Percentage": 2.5,
+
+  "transfer.weeks1To5DeadlineMonth": 12,
+  "transfer.weeks1To5DeadlineDay": 31,
+  "transfer.week6DeadlineMonth": 9,
+  "transfer.week6DeadlineDay": 30
+}

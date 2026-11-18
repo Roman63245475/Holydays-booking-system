@@ -1,3 +1,4 @@
+using System.Text.Json;
 using be;
 using database;
 using LinqToDB;
@@ -10,9 +11,14 @@ public class AccuralService
 {
     private Database db;
     
+    // TODO: parameters.json is not found at runtime (relative path, file is outside server/), so it is disabled for now
+    // string json = File.ReadAllText("parameters.json");
+
+    // private Dictionary<string, JsonElement> parameters;
     public AccuralService(Database db)
     {
         this.db = db;
+        // parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
     }
 
     public async Task accrue_holidays()
@@ -32,12 +38,20 @@ public class AccuralService
         
             update_accrue_holidays(law_holidays_with_history);
             update_accrue_holidays(agreed_holidays_with_history);
-        
+
+            // accounts whose earning period ends with the month that was just accrued
+            List<LawHolidays> ended_law_holidays = get_accounts_with_ended_earning_period(law_holidays_with_history);
+            List<AgreedHolidays> ended_agreed_holidays = get_accounts_with_ended_earning_period(agreed_holidays_with_history);
+
+            // accounts with ended earning period are skipped here, they get a new account instead
             await create_new_history_records<LawHolidaysHistory>(law_holidays_with_history);
             await create_new_history_records<AgreedHolidaysHistory>(agreed_holidays_with_history);
 
             await update_holiday_accounts<LawHolidays>(law_holidays_with_history, nameof(LawHolidays.earned_holiday_days));
             await update_holiday_accounts<AgreedHolidays>(agreed_holidays_with_history, nameof(AgreedHolidays.earned_holiday_hours));
+
+            await start_new_earning_periods<LawHolidays, LawHolidaysHistory>(ended_law_holidays, HolidayType.FerieEfterFerieloven);
+            await start_new_earning_periods<AgreedHolidays, AgreedHolidaysHistory>(ended_agreed_holidays, HolidayType.FerieUge);
             await transaction.CommitAsync();
         }
         catch (Exception e)
@@ -67,9 +81,22 @@ public class AccuralService
                 continue;
             }
 
+            // earning period of this account is over, the next month belongs to a new account
+            if (is_earning_period_ended(holiday_acc))
+            {
+                continue;
+            }
+
             // first day of the month after the last history period
             DateOnly next_start = new DateOnly(h.period_end.Year, h.period_end.Month, 1).AddMonths(1);
             DateOnly next_end = next_start.AddMonths(1).AddDays(-1);
+
+            // if the earning period ends before the end of the month, the history stops there
+            // (only the days inside the earning period are accrued)
+            if (next_end > holiday_acc.earning_period_end)
+            {
+                next_end = holiday_acc.earning_period_end;
+            }
 
             new_histories.Add(new THistory
             {
@@ -190,6 +217,129 @@ public class AccuralService
                select new { h, r })
             .Set(x => x.h.accrued, x => x.r.accrued)
             .UpdateAsync();
+    }
+
+    // earning period is over when the last history month reached the end of the earning period
+    // (law: 31 August, agreed: 31 December)
+    private bool is_earning_period_ended(HolidayAccount holiday)
+    {
+        HolidayHistory history = holiday.get__holiday_history();
+        if (history == null)
+        {
+            return false;
+        }
+
+        return history.period_end >= holiday.earning_period_end;
+    }
+
+    private List<THoliday> get_accounts_with_ended_earning_period<THoliday>(List<THoliday> holidays)
+        where THoliday : HolidayAccount
+    {
+        List<THoliday> ended_accounts = new List<THoliday>();
+        foreach (var holiday in holidays)
+        {
+            if (is_earning_period_ended(holiday))
+            {
+                ended_accounts.Add(holiday);
+            }
+        }
+        return ended_accounts;
+    }
+
+    // old accounts stop earning, every user gets a new account of the same type with the next earning period
+    // THoliday defines the accounts table (LawHolidays -> law_holidays, AgreedHolidays -> agreed_holidays)
+    // THistory defines the histories table (LawHolidaysHistory -> law_holidays_history, ...)
+    // h_type defines the usage period of the new account, because it is different for every holiday type
+    private async Task start_new_earning_periods<THoliday, THistory>(List<THoliday> ended_accounts, HolidayType h_type)
+        where THoliday : HolidayAccount, new()
+        where THistory : HolidayHistory, new()
+    {
+        if (ended_accounts.Count == 0)
+        {
+            return;
+        }
+
+        // old accounts are not deleted, the employee can still use them until usage_period_end
+        List<Guid> ended_ids = new List<Guid>();
+        foreach (var old_account in ended_accounts)
+        {
+            ended_ids.Add(old_account.id);
+        }
+
+        await db.GetTable<THoliday>()
+            .Where(h => ended_ids.Contains(h.id))
+            .Set(h => h.active, false)
+            .UpdateAsync();
+
+        List<THoliday> new_accounts = new List<THoliday>();
+        List<Guid> user_ids = new List<Guid>();
+        foreach (var old_account in ended_accounts)
+        {
+            // law: 1 Sep - 31 Aug, agreed: 1 Jan - 31 Dec
+            DateOnly earning_start = old_account.earning_period_end.AddDays(1);
+            DateOnly earning_end = earning_start.AddYears(1).AddDays(-1);
+
+            DateOnly usage_start;
+            DateOnly usage_end;
+            if (h_type == HolidayType.FerieEfterFerieloven)
+            {
+                // weeks 1-5: used at the same time as earned, until 31 Dec of the year after the earning period
+                usage_start = earning_start;
+                usage_end = new DateOnly(earning_end.Year + 1, 12, 31);
+            }
+            else
+            {
+                // week 6: used from 1 May until 30 April after the earning year
+                usage_start = new DateOnly(earning_end.Year + 1, 5, 1);
+                usage_end = new DateOnly(earning_end.Year + 2, 4, 30);
+            }
+
+            // new() lets us create THoliday via its parameterless constructor (it also sets month_rate),
+            // earned and used holidays stay 0 by default
+            new_accounts.Add(new THoliday
+            {
+                user_id = old_account.user_id,
+                earning_period_start = earning_start,
+                earning_period_end = earning_end,
+                usage_period_start = usage_start,
+                usage_period_end = usage_end,
+                holiday_type = h_type,
+                active = true
+            });
+            user_ids.Add(old_account.user_id);
+        }
+
+        // one batch insert for all new accounts (id is generated by the db)
+        await db.GetTable<THoliday>().BulkCopyAsync(new_accounts);
+
+        // BulkCopy does not return the generated ids, so we read the new accounts back.
+        // old accounts are already inactive, so the only active account of these users is the new one
+        List<THoliday> saved_accounts = await db.GetTable<THoliday>()
+            .Where(h => h.active && user_ids.Contains(h.user_id))
+            .ToListAsync();
+
+        List<THistory> first_histories = new List<THistory>();
+        foreach (var saved_account in saved_accounts)
+        {
+            DateOnly history_start = saved_account.earning_period_start;
+            DateOnly history_end = new DateOnly(history_start.Year, history_start.Month,
+                DateTime.DaysInMonth(history_start.Year, history_start.Month));
+            if (history_end > saved_account.earning_period_end)
+            {
+                history_end = saved_account.earning_period_end;
+            }
+
+            first_histories.Add(new THistory
+            {
+                account_id = saved_account.id,
+                period_start = history_start,
+                period_end = history_end,
+                accrued = 0
+            });
+        }
+
+        // one batch insert for all first histories
+        await db.GetTable<THistory>().BulkCopyAsync(first_histories);
     }
 
     // pair "history id -> new accrued value", only used as VALUES source for the batch update (no table in db)
