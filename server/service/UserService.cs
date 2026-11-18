@@ -65,10 +65,14 @@ public class UserService
             {
                 name = x.User.name,
                 email = x.User.email,
-                earned_holiday_hours = x.Agreed.earned_holiday_hours + x.Law.earned_holiday_days*24,
-                used_holiday_hours = x.Agreed.used_holiday_hours +  x.Law.used_holiday_days*24,
+                agreed_earned_holiday_hours = x.Agreed.earned_holiday_hours,
+                
+                agreed_used_holiday_hours = x.Agreed.used_holiday_hours,
                 available_holiday_hours =
-                    (x.Agreed.earned_holiday_hours+x.Law.earned_holiday_days*24) - (x.Agreed.used_holiday_hours +x.Law.used_holiday_days*24)
+                    x.Agreed.earned_holiday_hours - x.Agreed.used_holiday_hours,
+                law_earned_holiday_day = x.Law.earned_holiday_days,
+                law_used_holiday_day = x.Law.used_holiday_days,
+                available_holiday_days = x.Law.earned_holiday_days -  x.Law.used_holiday_days
             })
             .FirstOrDefaultAsync();
     }

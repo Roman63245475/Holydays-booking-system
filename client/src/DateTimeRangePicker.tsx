@@ -1,23 +1,22 @@
 
-import { useState } from "react";
+import {useState} from "react";
+import {requestApi} from "./api/client";
+import type {HolidayKind as UserHolidayKind} from "./HolidayBalance";
 
 export interface DateTimeRange {
     startDate: string;
-    startTime: string;
     endDate: string;
-    endTime: string;
 }
 
 interface Props {
     onChange?: (range: DateTimeRange) => void;
+    holidayKind: UserHolidayKind;
 }
 
-export function DateTimeRangePicker({ onChange }: Props) {
+export function DateTimeRangePicker({ onChange, holidayKind }: Props) {
     const [range, setRange] = useState<DateTimeRange>({
         startDate: "2026-11-13",
-        startTime: "09:00",
         endDate: "2026-11-13",
-        endTime: "17:30",
     });
 
     const start = range.startDate ? new Date(`${range.startDate}T00:00:00`) : new Date(NaN);
@@ -43,7 +42,20 @@ export function DateTimeRangePicker({ onChange }: Props) {
 
     const hours = Math.floor(requestedWorkMinutes / 60);
     const minutes = requestedWorkMinutes % 60;
-
+    
+    async function sendRequest() {
+        try {
+            await requestApi.create({
+                startDate: range.startDate,
+                endDate: range.endDate,
+                holidayKind: holidayKind === "agreed" ? 1 : 0,
+                hours: Math.ceil(requestedWorkMinutes / 60),
+            });
+            window.alert("Your holiday request was submitted.");
+        } catch (error) {
+            window.alert(error instanceof Error ? error.message : "Could not submit your request.");
+        }
+    }
     return (
         <div className="w-full max-w-2xl rounded-xl border p-5 space-y-5">
 
@@ -68,17 +80,9 @@ export function DateTimeRangePicker({ onChange }: Props) {
                         className="w-full rounded-lg border p-3"
                     />
 
-                    {/* Clock input commented out for now.
-                    <input
-                        type="time"
-                        value={range.startTime}
-                        onChange={(e) => update("startTime", e.target.value)}
-                        className="w-full rounded-lg border p-3"
-                    />
-                    */}
+                    
                 </div>
 
-                {/* END */}
                 <div className="space-y-3">
                     <label className="text-sm font-medium">
                         End
@@ -94,14 +98,7 @@ export function DateTimeRangePicker({ onChange }: Props) {
                         className="w-full rounded-lg border p-3"
                     />
 
-                    {/* Clock input commented out for now.
-                    <input
-                        type="time"
-                        value={range.endTime}
-                        onChange={(e) => update("endTime", e.target.value)}
-                        className="w-full rounded-lg border p-3"
-                    />
-                    */}
+                    
                 </div>
             </div>
 
@@ -115,7 +112,9 @@ export function DateTimeRangePicker({ onChange }: Props) {
                 <div className="rounded-lg bg-muted p-4">
                     
                     <p className="text-xl font-semibold">
-                        <button className="request-button">Send request for {hours}h</button>
+                        <button className="request-button" type="button" onClick={sendRequest}>
+                            Send request for {range.startDate} to {range.endDate}
+                        </button>
                         
                     </p>
                 </div>
