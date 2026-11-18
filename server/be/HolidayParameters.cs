@@ -29,6 +29,13 @@ public static class HolidayParameters
         return parameters.Value[key].GetDecimal();
     }
 
+    // hours of a full time working week of the company (sum of workSchedule.*, Business Esbjerg: 7.5 * 4 + 7 = 37)
+    public static decimal get_full_time_weekly_hours()
+    {
+        string[] days = { "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday" };
+        return days.Sum(day => get_decimal("workSchedule." + day));
+    }
+
     public static DateOnly last_day_of_month(int year, int month)
     {
         return new DateOnly(year, month, DateTime.DaysInMonth(year, month));

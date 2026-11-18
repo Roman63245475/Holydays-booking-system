@@ -38,6 +38,14 @@ public sealed class AgreedHolidays: HolidayAccount
         this.holiday_history = lh;
     }
 
+    // week 6 is defined in hours per month for a FULL TIME employee (3.083),
+    // a part time employee earns in proportion to the weekly hours (3.083 * weekly_hours / 37),
+    // so a year always gives exactly one week of the employee's own schedule (full time 37 h, part time 30 h -> 30 h)
+    public override decimal get_month_rate_hours(Schedule schedule)
+    {
+        return this.month_rate * schedule.get_weekly_hours() / HolidayParameters.get_full_time_weekly_hours();
+    }
+
     private void set_month_rate()
     {
         // days/hours earned per month, from parameters.json

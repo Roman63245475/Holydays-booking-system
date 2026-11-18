@@ -414,3 +414,8 @@ button:hover{
 .request-button:hover {
   background-color: #86efac;
 }
+
+/* validation message from the backend (e.g. in the create user form) */
+.error {
+  color: #f87171;
+}

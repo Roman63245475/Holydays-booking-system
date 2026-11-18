@@ -41,7 +41,6 @@ export function UsersTab(){
                         <th>Name</th>
                         <th>Email</th>
                         <th>Role</th>
-                        <th>Salary</th>
                         <th>Start date</th>
                         {/*<th>Actions</th>*/}
                     </tr>
@@ -52,7 +51,6 @@ export function UsersTab(){
                                 <td>{user.name}</td>
                                 <td>{user.email}</td>
                                 <td>{user.role !== undefined ? Role[user.role] : "—"}</td>
-                                <td>{user.salary}</td>
                                 <td>{formatDate(user.start_date)}</td>
                             </tr>
                         ))}

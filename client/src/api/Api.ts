@@ -93,6 +93,59 @@ export class LoginClient {
     }
 }
 
+export class RequestClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5232";
+    }
+
+    create(requestDTO: CreateRequestDTO): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/request/create";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(requestDTO);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCreate(_response);
+        });
+    }
+
+    protected processCreate(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+}
+
 export class TimeClient {
     private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
     private baseUrl: string;
@@ -227,7 +280,7 @@ export class UserClient {
         return Promise.resolve<ClientUser[]>(null as any);
     }
 
-    me(): Promise<ClientUser> {
+    me(): Promise<UserViewPage> {
         let url_ = this.baseUrl + "/me";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -243,13 +296,13 @@ export class UserClient {
         });
     }
 
-    protected processMe(response: Response): Promise<ClientUser> {
+    protected processMe(response: Response): Promise<UserViewPage> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
-            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ClientUser;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserViewPage;
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -257,7 +310,7 @@ export class UserClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<ClientUser>(null as any);
+        return Promise.resolve<UserViewPage>(null as any);
     }
 }
 
@@ -265,7 +318,6 @@ export interface ClientUser {
     id?: string;
     name?: string;
     email?: string;
-    salary?: number;
     start_date?: Date;
     role?: Role;
 }
@@ -281,12 +333,48 @@ export interface LoginUserDTO {
     password?: string;
 }
 
+export interface CreateRequestDTO {
+    startDate?: string;
+    endDate?: string;
+    holidayKind?: HolidayKind;
+    hours?: number;
+}
+
+export enum HolidayKind {
+    Law = 0,
+    Agreed = 1,
+}
+
 export interface CreateUserDTO {
     name?: string;
     email?: string;
     password?: string;
     role?: Role;
-    salary?: number;
+    schedule?: ScheduleDTO;
+}
+
+export interface ScheduleDTO {
+    monday_start?: string | undefined;
+    monday_end?: string | undefined;
+    tuesday_start?: string | undefined;
+    tuesday_end?: string | undefined;
+    wednesday_start?: string | undefined;
+    wednesday_end?: string | undefined;
+    thursday_start?: string | undefined;
+    thursday_end?: string | undefined;
+    friday_start?: string | undefined;
+    friday_end?: string | undefined;
+}
+
+export interface UserViewPage {
+    name?: string;
+    email?: string;
+    agreed_earned_holiday_hours?: number;
+    agreed_used_holiday_hours?: number;
+    available_holiday_hours?: number;
+    law_earned_holiday_hours?: number;
+    law_used_holiday_hours?: number;
+    law_available_holiday_hours?: number;
 }
 
 export interface FileResponse {

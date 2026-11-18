@@ -47,8 +47,11 @@ public class AccuralService
                 .Cast<AgreedHolidays>()
                 .ToList();
 
-            await accrue_holidays_in_histories<LawHolidaysHistory>(law_holidays_with_history);
-            await accrue_holidays_in_histories<AgreedHolidaysHistory>(agreed_holidays_with_history);
+            // working schedules of all users with an active account, the accrued hours depend on them
+            Dictionary<Guid, List<Schedule>> schedules_by_user = await get_schedules_by_user(law_holidays_with_history, agreed_holidays_with_history);
+
+            await accrue_holidays_in_histories<LawHolidaysHistory>(law_holidays_with_history, schedules_by_user);
+            await accrue_holidays_in_histories<AgreedHolidaysHistory>(agreed_holidays_with_history, schedules_by_user);
         
             update_accrue_holidays(law_holidays_with_history);
             update_accrue_holidays(agreed_holidays_with_history);
@@ -61,7 +64,7 @@ public class AccuralService
             await create_new_history_records<LawHolidaysHistory>(law_holidays_with_history);
             await create_new_history_records<AgreedHolidaysHistory>(agreed_holidays_with_history);
 
-            await update_holiday_accounts<LawHolidays>(law_holidays_with_history, nameof(LawHolidays.earned_holiday_days));
+            await update_holiday_accounts<LawHolidays>(law_holidays_with_history, nameof(LawHolidays.earned_holiday_hours));
             await update_holiday_accounts<AgreedHolidays>(agreed_holidays_with_history, nameof(AgreedHolidays.earned_holiday_hours));
 
             await start_new_earning_periods<LawHolidays, LawHolidaysHistory>(ended_law_holidays, HolidayType.FerieEfterFerieloven);
@@ -145,7 +148,7 @@ public class AccuralService
     }
 
     // THoliday defines the table the accounts are updated in (LawHolidays -> law_holidays, AgreedHolidays -> agreed_holidays)
-    // earned_column defines the column, because it is different for every holiday type (earned_holiday_days, earned_holiday_hours)
+    // earned_column defines the column, because it is different for every holiday type (both are earned_holiday_hours now, but the tables differ)
     private async Task update_holiday_accounts<THoliday>(IEnumerable<HolidayAccount> holidays, string earned_column)
         where THoliday : HolidayAccount
     {
@@ -185,35 +188,35 @@ public class AccuralService
     //change am in hol
     // save hol
     // THistory defines the table the histories are updated in (LawHolidaysHistory -> law_holidays_history, ...)
-    private async Task accrue_holidays_in_histories<THistory>(IEnumerable<HolidayAccount> holidays)
+    private async Task accrue_holidays_in_histories<THistory>(IEnumerable<HolidayAccount> holidays, Dictionary<Guid, List<Schedule>> schedules_by_user)
         where THistory : HolidayHistory
     {
         List<THistory> holiday_histories = new List<THistory>();
-        decimal? month_rate = null;
         foreach (var holiday in holidays)
         {
-            if (month_rate == null)
-            {
-                month_rate = holiday.get_month_rate();
-            }
-
             THistory history = (THistory)holiday.get__holiday_history();
-            
+
             if (history == null)
             {
                 continue;
             }
 
-            holiday_histories.Add(history);
-        }
+            // the schedule that applied in the accrued month (schedule history: a change later must not affect this month)
+            List<Schedule> user_schedules = schedules_by_user.GetValueOrDefault(holiday.user_id, new List<Schedule>());
+            Schedule? schedule = Schedule.find_for_date(user_schedules, history.period_start);
+            if (schedule == null)
+            {
+                // without a schedule the hours can not be calculated, accruing 0 would silently lose a month
+                throw new Exception($"User {holiday.user_id} has no working schedule on {history.period_start}, holidays can not be accrued");
+            }
 
-        foreach (var history in holiday_histories)
-        {
+            decimal month_rate = holiday.get_month_rate_hours(schedule);
+
             // +1 because both period_start and period_end are included (13..30 = 18 days)
             int days = history.period_end.DayNumber - history.period_start.DayNumber + 1;
-            decimal day_rate = month_rate.Value / DateTime.DaysInMonth(history.period_start.Year, history.period_start.Month);
-            decimal earned_holidays = days * day_rate;
-            history.accrued = Math.Round(earned_holidays, 2, MidpointRounding.AwayFromZero);
+            decimal day_rate = month_rate / DateTime.DaysInMonth(history.period_start.Year, history.period_start.Month);
+            history.accrued = Math.Round(days * day_rate, 2, MidpointRounding.AwayFromZero);
+            holiday_histories.Add(history);
         }
 
         // batch update by id: one UPDATE ... FROM (VALUES (id, accrued), ...) for all histories
@@ -351,6 +354,20 @@ public class AccuralService
 
         // one batch insert for all first histories
         await db.GetTable<THistory>().BulkCopyAsync(first_histories);
+    }
+
+    // all schedules of the users of the given accounts, grouped by user (one query for everybody)
+    private async Task<Dictionary<Guid, List<Schedule>>> get_schedules_by_user(params IEnumerable<HolidayAccount>[] account_lists)
+    {
+        List<Guid> user_ids = account_lists.SelectMany(list => list).Select(a => a.user_id).Distinct().ToList();
+
+        List<Schedule> schedules = await db.schedules
+            .Where(s => user_ids.Contains(s.user_id))
+            .ToListAsync();
+
+        return schedules
+            .GroupBy(s => s.user_id)
+            .ToDictionary(g => g.Key, g => g.ToList());
     }
 
     // pair "history id -> new accrued value", only used as VALUES source for the batch update (no table in db)

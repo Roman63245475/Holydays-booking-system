@@ -2,30 +2,30 @@ namespace be;
 
 public sealed class LawHolidays: HolidayAccount
 {
-    public decimal earned_holiday_days { get; set; }
-    public decimal used_holiday_days { get; set; }
+    public decimal earned_holiday_hours { get; set; }
+    public decimal used_holiday_hours { get; set; }
     
-    private decimal remaining_holiday_days { get; set; }
+    private decimal remaining_holiday_hours { get; set; }
     
 
     public LawHolidays(Guid user_id, DateOnly earningPeriodStart, DateOnly earningPeriodEnd,
-        DateOnly usagePeriodStart, DateOnly usagePeriodEnd, HolidayType holidayType, bool active, decimal earned_holiday_days, decimal used_holiday_days): base(user_id,  earningPeriodStart, earningPeriodEnd, usagePeriodStart, usagePeriodEnd, holidayType, active) 
+        DateOnly usagePeriodStart, DateOnly usagePeriodEnd, HolidayType holidayType, bool active, decimal earned_holiday_hours, decimal used_holiday_hours): base(user_id,  earningPeriodStart, earningPeriodEnd, usagePeriodStart, usagePeriodEnd, holidayType, active) 
     {
-        this.earned_holiday_days = earned_holiday_days;
-        this.used_holiday_days = used_holiday_days;
-        this.remaining_holiday_days = earned_holiday_days - used_holiday_days;
+        this.earned_holiday_hours = earned_holiday_hours;
+        this.used_holiday_hours = used_holiday_hours;
+        this.remaining_holiday_hours = earned_holiday_hours - used_holiday_hours;
         set_month_rate();
     }
 
     public override void add_earned(decimal amount)
     {
-        this.earned_holiday_days += amount;
-        this.remaining_holiday_days = this.earned_holiday_days - this.used_holiday_days;
+        this.earned_holiday_hours += amount;
+        this.remaining_holiday_hours = this.earned_holiday_hours - this.used_holiday_hours;
     }
 
     public override decimal get_earned()
     {
-        return this.earned_holiday_days;
+        return this.earned_holiday_hours;
     }
 
     public LawHolidays()
@@ -39,9 +39,17 @@ public sealed class LawHolidays: HolidayAccount
     }
 
 
+    // the law defines the rate in DAYS per month (2.08), the balance is kept in hours
     private void set_month_rate()
     {
-        // days/hours earned per month, from parameters.json
         this.month_rate = HolidayParameters.get_decimal("weeks1To5.month_rate");
+    }
+
+    // 25 holiday days a year = 5 weeks, so one holiday day = 1/5 of the employee's working week
+    // (full time 37 h -> 7.40 h, part time 30 h -> 6.00 h), no matter on how many weekdays the employee works.
+    // full time: 2.08 * 7.40 = 15.39 hours per month
+    public override decimal get_month_rate_hours(Schedule schedule)
+    {
+        return this.month_rate * schedule.get_average_day_hours();
     }
 }
