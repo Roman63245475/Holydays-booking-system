@@ -3,6 +3,7 @@
   "weeks1To5.earningPeriodStartMonth": 9,
   "weeks1To5.earningPeriodEndMonth": 8,
   "weeks1To5.usagePeriodStartMonth": 9,
+  "weeks1To5.usagePeriodStartYearOffset": 0,
   "weeks1To5.usagePeriodEndMonth": 12,
   "weeks1To5.usagePeriodEndYearOffset": 1,
 
@@ -17,6 +18,7 @@
   "week6.earningPeriodStartMonth": 1,
   "week6.earningPeriodEndMonth": 12,
   "week6.usagePeriodStartMonth": 5,
+  "week6.usagePeriodStartYearOffset": 1,
   "week6.usagePeriodEndMonth": 4,
   "week6.usagePeriodEndYearOffset": 2,
 

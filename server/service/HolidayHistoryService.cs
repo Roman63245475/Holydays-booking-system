@@ -1,7 +1,6 @@
 using be;
 using database;
 using LinqToDB;
-using LinqToDB.Internal.DataProvider.Firebird;
 
 namespace service;
 
@@ -15,32 +14,27 @@ public class HolidayHistoryService
         this.db = db;
     }
 
-    public async Task create_history_records(LawHolidays lawHolidays, AgreedHolidays agreed_holidays)
+    // the first history of an account starts on the day the user started working (not on the 1st of the month),
+    // so only the days the user really worked in the first month are accrued
+    public async Task create_history_records(LawHolidays lawHolidays, AgreedHolidays agreed_holidays, DateOnly user_start_date)
     {
-        
-        // Law holidays history instance creation for following insertion in the db
-        Guid law_account_id = lawHolidays.id;
-        DateOnly start_period_law_history = lawHolidays.earning_period_start;
-        int last_day_of_month = DateTime.DaysInMonth(start_period_law_history.Year,  start_period_law_history.Month);
-        DateOnly end_period_law_history = new DateOnly(start_period_law_history.Year, start_period_law_history.Month, last_day_of_month);
         decimal accrued = 0.0m;
 
-        LawHolidaysHistory law_holiday_history =
-            new LawHolidaysHistory(law_account_id, start_period_law_history, end_period_law_history, accrued);
-        
-        //Same with the Agreed holidays history
-        
-        Guid agreed_account_id = agreed_holidays.id;
-        DateOnly start_period_agreed_history = agreed_holidays.earning_period_start;
-        int last_day_of_month_agreed = DateTime.DaysInMonth(start_period_agreed_history.Year, start_period_agreed_history.Month);
-        DateOnly end_period_agreed_history = new DateOnly(start_period_agreed_history.Year, start_period_agreed_history.Month, last_day_of_month_agreed);
-        
-        AgreedHolidaysHistory agreed_holiday_history = new AgreedHolidaysHistory(agreed_account_id,  start_period_agreed_history,  end_period_agreed_history, accrued);
-        
-        
+        LawHolidaysHistory law_holiday_history = new LawHolidaysHistory(
+            lawHolidays.id, user_start_date, get_first_period_end(user_start_date, lawHolidays.earning_period_end), accrued);
+
+        AgreedHolidaysHistory agreed_holiday_history = new AgreedHolidaysHistory(
+            agreed_holidays.id, user_start_date, get_first_period_end(user_start_date, agreed_holidays.earning_period_end), accrued);
+
         // insertion
         await db.InsertAsync(law_holiday_history);
         await db.InsertAsync(agreed_holiday_history);
     }
-    
+
+    // the history ends on whatever comes first: the end of the start month or the end of the account's earning period
+    private static DateOnly get_first_period_end(DateOnly period_start, DateOnly earning_period_end)
+    {
+        DateOnly month_end = HolidayParameters.last_day_of_month(period_start.Year, period_start.Month);
+        return month_end < earning_period_end ? month_end : earning_period_end;
+    }
 }

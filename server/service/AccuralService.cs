@@ -1,4 +1,3 @@
-using System.Text.Json;
 using be;
 using database;
 using LinqToDB;
@@ -11,14 +10,29 @@ public class AccuralService
 {
     private Database db;
     
-    // TODO: parameters.json is not found at runtime (relative path, file is outside server/), so it is disabled for now
-    // string json = File.ReadAllText("parameters.json");
+    // the dates below are a template of ONE earning period, built for HolidayParameters.REFERENCE_YEAR from parameters.json.
+    // for a real account they are moved to the needed year with AddYears (see start_new_earning_periods)
 
-    // private Dictionary<string, JsonElement> parameters;
+    // weeks 1-5 (FerieEfterFerieloven -> LawHolidays)
+    private DateOnly law_earning_period_start;
+    private DateOnly law_earning_period_end;
+    private DateOnly law_usage_period_start;
+    private DateOnly law_usage_period_end;
+
+    // week 6 (FerieUge -> AgreedHolidays)
+    private DateOnly agreed_earning_period_start;
+    private DateOnly agreed_earning_period_end;
+    private DateOnly agreed_usage_period_start;
+    private DateOnly agreed_usage_period_end;
+
     public AccuralService(Database db)
     {
         this.db = db;
-        // parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+
+        (law_earning_period_start, law_earning_period_end, law_usage_period_start, law_usage_period_end)
+            = HolidayParameters.build_period_dates("weeks1To5");
+        (agreed_earning_period_start, agreed_earning_period_end, agreed_usage_period_start, agreed_usage_period_end)
+            = HolidayParameters.build_period_dates("week6");
     }
 
     public async Task accrue_holidays()
@@ -275,24 +289,21 @@ public class AccuralService
         List<Guid> user_ids = new List<Guid>();
         foreach (var old_account in ended_accounts)
         {
-            // law: 1 Sep - 31 Aug, agreed: 1 Jan - 31 Dec
-            DateOnly earning_start = old_account.earning_period_end.AddDays(1);
-            DateOnly earning_end = earning_start.AddYears(1).AddDays(-1);
+            // template dates of this holiday type (from parameters.json, built for HolidayParameters.REFERENCE_YEAR)
+            bool is_law = h_type == HolidayType.FerieEfterFerieloven;
+            DateOnly t_earning_start = is_law ? law_earning_period_start : agreed_earning_period_start;
+            DateOnly t_earning_end = is_law ? law_earning_period_end : agreed_earning_period_end;
+            DateOnly t_usage_start = is_law ? law_usage_period_start : agreed_usage_period_start;
+            DateOnly t_usage_end = is_law ? law_usage_period_end : agreed_usage_period_end;
 
-            DateOnly usage_start;
-            DateOnly usage_end;
-            if (h_type == HolidayType.FerieEfterFerieloven)
-            {
-                // weeks 1-5: used at the same time as earned, until 31 Dec of the year after the earning period
-                usage_start = earning_start;
-                usage_end = new DateOnly(earning_end.Year + 1, 12, 31);
-            }
-            else
-            {
-                // week 6: used from 1 May until 30 April after the earning year
-                usage_start = new DateOnly(earning_end.Year + 1, 5, 1);
-                usage_end = new DateOnly(earning_end.Year + 2, 4, 30);
-            }
+            // the new earning period starts the day after the old one ended,
+            // the difference in years moves the whole template to that year
+            int years_shift = old_account.earning_period_end.AddDays(1).Year - t_earning_start.Year;
+
+            DateOnly earning_start = t_earning_start.AddYears(years_shift);
+            DateOnly earning_end = t_earning_end.AddYears(years_shift);
+            DateOnly usage_start = t_usage_start.AddYears(years_shift);
+            DateOnly usage_end = t_usage_end.AddYears(years_shift);
 
             // new() lets us create THoliday via its parameterless constructor (it also sets month_rate),
             // earned and used holidays stay 0 by default
