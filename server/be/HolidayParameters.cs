@@ -1,9 +1,10 @@
 using System.Text.Json;
 
-namespace service;
+namespace be;
 
 // reads parameters.json and builds the period dates of the holiday types from it.
-// used by AccuralService and HolidayAccountsService, so the parsing logic is in one place
+// used by AccuralService, HolidayAccountsService (period dates) and LawHolidays, AgreedHolidays (month rates),
+// so the parsing logic is in one place
 public static class HolidayParameters
 {
     // the period dates are a template of ONE earning period, built for REFERENCE_YEAR.
@@ -21,6 +22,11 @@ public static class HolidayParameters
     public static int get_int(string key)
     {
         return parameters.Value[key].GetInt32();
+    }
+
+    public static decimal get_decimal(string key)
+    {
+        return parameters.Value[key].GetDecimal();
     }
 
     public static DateOnly last_day_of_month(int year, int month)

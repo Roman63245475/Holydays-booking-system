@@ -40,7 +40,8 @@ public sealed class AgreedHolidays: HolidayAccount
 
     private void set_month_rate()
     {
-        this.month_rate = 3.083m;
+        // days/hours earned per month, from parameters.json
+        this.month_rate = HolidayParameters.get_decimal("week6.hoursEarnedPerMonth");
     }
     
     
