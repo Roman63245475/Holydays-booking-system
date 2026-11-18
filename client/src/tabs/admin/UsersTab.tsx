@@ -1,9 +1,9 @@
-import "../index.css";
+import "../../index.css";
 import {useState} from "react";
-import {CreateUser} from "@/CreateUser.tsx";
-import {userApi} from "../api/client"
+import {CreateUser} from "@/dialog/CreateUser.tsx";
+import {userApi} from "../../api/client.ts"
 import {useEffect} from "react";
-import {Role, type ClientUser} from "../api/Api.ts";
+import {Role, type ClientUser} from "../../api/Api.ts";
 
 function formatDate(value?: Date | string): string {
     if (!value) return "—";

@@ -21,7 +21,7 @@ public class LoginController: ControllerBase
         User login_user = await service.login(user);
         HttpContext.Session.SetString("userId", login_user.id.ToString());
         HttpContext.Session.SetString("role", login_user.role.ToString());
-        return Ok(new ClientUser{name = login_user.name, email = login_user.email, role = login_user.role});
+        return Ok(new ClientUser{id = login_user.id, name = login_user.name, email = login_user.email, role = login_user.role});
     }
 
     [HttpPost("logout")]

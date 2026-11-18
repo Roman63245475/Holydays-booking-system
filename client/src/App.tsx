@@ -1,7 +1,7 @@
 import { APITester } from "./APITester";
 import "./index.css";
-import LogInForm from "@/LogInForm.tsx";
-import {Admin} from "@/Admin.tsx";
+import LogInForm from "@/pages/LogInForm.tsx";
+import {Admin} from "@/pages/Admin.tsx";
 
 export function App() {
   return (

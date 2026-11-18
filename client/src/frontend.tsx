@@ -9,9 +9,10 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import {createBrowserRouter, RouterProvider} from "react-router";
-import LogInForm from "@/LogInForm.tsx";
-import {Admin} from "@/Admin.tsx";
-import {User} from "@/User.tsx";
+import LogInForm from "@/pages/LogInForm.tsx";
+import {Admin} from "@/pages/Admin.tsx";
+import {User} from "@/pages/User.tsx";
+import {Accountant} from "@/pages/Accountant.tsx";
 
 const elem = document.getElementById("root")!;
 const app = (
@@ -24,10 +25,13 @@ const app = (
           path: '/admin_page',
           element: <Admin/>
         },
-
         {
             path: '/user_page',
             element: <User/>
+        },
+        {
+            path: '/accountant',
+            element: <Accountant />
         }
     ])}/>
 );

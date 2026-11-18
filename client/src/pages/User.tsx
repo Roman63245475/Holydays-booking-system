@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { loginApi, userApi } from "./api/client";
-import type { ClientUser } from "./api/Api";
-import storage from "./storage";
-import { DateTimeRangePicker } from "./DateTimeRangePicker";
+import { loginApi, userApi } from "../api/client.ts";
+import type { ClientUser } from "../api/Api.ts";
+import storage from "../storage.tsx";
+import { DateTimeRangePicker } from "../DateTimeRangePicker.tsx";
 
 
 export function User() {
