@@ -4,6 +4,9 @@ using service;
 
 namespace api;
 
+// [ApiController]: if the JSON can not be read into RuleSetDTO (e.g. "" for a time, null for a number),
+// ASP.NET answers 400 with the name of the wrong field instead of passing a null DTO to the action
+[ApiController]
 public class RuleSetController : ControllerBase
 {
     private RulesetService rulesetService;

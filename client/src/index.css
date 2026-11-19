@@ -475,3 +475,36 @@ td{
 .error {
   color: #f87171;
 }
+
+/* holiday rules form: one fieldset per group of parameters */
+.parameters-form{
+  width: 60%;
+  align-items: stretch;
+}
+
+.parameters-form fieldset{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 2px solid rgb(8 8 18 / 0.6);
+  border-radius: 5px;
+  background-color: #1e293b;
+}
+
+.parameters-form legend{
+  padding: 0 8px;
+  font-weight: bold;
+}
+
+.success {
+  color: #4ade80;
+}
+
+button:disabled{
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+button:disabled:hover{
+  background-color: rgb(59 130 246 / 0.03);
+}

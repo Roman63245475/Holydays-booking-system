@@ -5,6 +5,7 @@ import {UsersTab} from "@/tabs/admin/UsersTab.tsx";
 import {ScheduleTab} from "@/tabs/admin/ScheduleTab.tsx";
 import {CalendarTab} from "@/tabs/admin/CalendarTab.tsx";
 import {ActivityTab} from "@/tabs/admin/ActivityTab.tsx";
+import {Parameters} from "@/tabs/Parameters.tsx";
 import {useNavigate} from "react-router";
 import {loginApi, timeApi} from "@/api/client.ts";
 import storage from "@/storage.tsx";
@@ -35,6 +36,8 @@ export function Admin(){
                 return <CalendarTab />
             case 'activity':
                 return <ActivityTab />
+            case 'parameters':
+                return <Parameters />
             default:
                 return <UsersTab />
         }
@@ -59,6 +62,7 @@ export function Admin(){
                 <p>Welcome {name}</p>
                 <div className={"flex center-v"}>
                     <button onClick={() => setActiveTab('users')}>Users and Roles <span className={"icon users-icon"} /></button>
+                    <button onClick={() => setActiveTab('parameters')}>Holiday Rules</button>
                     {/*<button onClick={() => setActiveTab('earnings')}>Holiday Earnings <span className={"icon earn-icon"} /></button>*/}
                     {/*<button onClick={() => setActiveTab('schedule')}>Work Schedules <span className={"icon schedule-icon"} /></button>*/}
                     {/*<button onClick={() => setActiveTab('calendar')}>Company Calendar <span className={"icon calendar-icon"} /></button>*/}
