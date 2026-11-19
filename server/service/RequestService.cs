@@ -35,4 +35,8 @@ public class RequestService
     public async Task DeclineRequest(Guid id) {
         await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Rejected).UpdateAsync();
     }
+
+    public async Task AcceptRequest(Guid id) {
+        await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Accepted).UpdateAsync();
+    }
 }

@@ -36,6 +36,15 @@ export function RequestsTab(){
         }
     }
 
+    async function acceptRequest(id : string) {
+        try{
+            await requestApi.acceptRequest(id)
+            await getRequests();
+        }catch(err){
+            console.log(err)
+        }
+    }
+
     return(
         <div className={"flex center-v p-16"}>
             {
@@ -57,7 +66,7 @@ export function RequestsTab(){
                                 <p>Status: {RequestStatus[r.status as number]}</p>
                             </div>
                             <div className={'flex g-10 center-v'}>
-                                <button className={'request-button'}>Approve</button>
+                                <button onClick={() => acceptRequest(r.id as string)} className={'request-button'}>Approve</button>
                                 <button onClick={() => {
                                     setSelectedRequestId(r.id as string);
                                     setActiveMenu('destruct')
