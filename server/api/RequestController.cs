@@ -46,7 +46,33 @@ public class RequestController : ControllerBase
 
     [HttpGet("requests/getRequests")]
     public async Task<ActionResult<List<HolidayRequestUser>>> GetRequests() {
+        var userId = HttpContext.Session.GetString("userId");
+        var role = HttpContext.Session.GetString("role");
+        
+        if (string.IsNullOrEmpty(userId)) {
+            return Unauthorized("Not logged in");
+        }
+        if (role != nameof(Role.Accountant)) {
+            return StatusCode(403, "You don't have enough permissions to access this request.");
+        }
+        
         var requests = await requestService.GetRequests();
         return Ok(requests);
+    }
+
+    [HttpPost("requests/declineRequest/{id}")]
+    public async Task<IActionResult> DeclineRequest([FromRoute] Guid id) {
+        var userId = HttpContext.Session.GetString("userId");
+        var role = HttpContext.Session.GetString("role");
+        
+        if (string.IsNullOrEmpty(userId)) {
+            return Unauthorized("Not logged in");
+        }
+        if (role != nameof(Role.Accountant)) {
+            return StatusCode(403, "You don't have enough permissions to do this operation.");
+        }
+
+        await requestService.DeclineRequest(id);
+        return Ok();
     }
 }

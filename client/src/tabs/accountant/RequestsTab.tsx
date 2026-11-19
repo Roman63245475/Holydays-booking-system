@@ -7,6 +7,7 @@ export function RequestsTab(){
 
     const [week6Active, setWeek6Active] = useState(false)
     const [currentRequests, setCurrentRequests] = useState<HolidayRequestUser[]>([])
+    const [selectedRequestId, setSelectedRequestId] = useState<string>('')
     const [activeMenu, setActiveMenu] = useState<string | null>(null)
 
     const targetKind = week6Active ? HolidayType.FerieUge : HolidayType.FerieEfterFerieloven;
@@ -25,10 +26,20 @@ export function RequestsTab(){
         }
     }
 
+    async function declineRequest() {
+        if (!selectedRequestId) return;
+        try {
+            await requestApi.declineRequest(selectedRequestId)
+            await getRequests();
+        } catch (err) {
+            console.log(err)
+        }
+    }
+
     return(
         <div className={"flex center-v p-16"}>
             {
-                activeMenu === 'destruct' && <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to decline this user's request?"}/>
+                activeMenu === 'destruct' && <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to decline this user's request?"} onConfirm={() => declineRequest()}/>
             }
             <h1>Pending Requests for {week6Active ? 'Week 6' : 'Week 1-5'}</h1>
             <div className={"flex table-border table-tools"}>
@@ -47,7 +58,10 @@ export function RequestsTab(){
                             </div>
                             <div className={'flex g-10 center-v'}>
                                 <button className={'request-button'}>Approve</button>
-                                <button onClick={() => setActiveMenu('destruct')} className={'btn-destructive-outline'}>Decline</button>
+                                <button onClick={() => {
+                                    setSelectedRequestId(r.id as string);
+                                    setActiveMenu('destruct')
+                                }} className={'btn-destructive-outline'}>Decline</button>
                             </div>
                         </div>
                     ))

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { loginApi, userApi } from "../api/client";
-import type { ClientUser } from "../api/Api";
+import type {UserViewPage} from "../api/Api";
 import storage from "../storage";
 import { DateTimeRangePicker } from "../DateTimeRangePicker";
 import { HolidayBalance, type HolidayKind } from "../HolidayBalance";
