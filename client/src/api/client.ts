@@ -1,4 +1,4 @@
-import {LoginClient, TimeClient, UserClient} from "./Api";
+import {LoginClient, RuleSetClient, TimeClient, UserClient} from "./Api";
 
 const baseUrl = "http://localhost:5232";
 
@@ -10,6 +10,7 @@ const http = {
 export const loginApi = new LoginClient(baseUrl, http);
 export const userApi = new UserClient(baseUrl, http);
 export const timeApi = new TimeClient(baseUrl, http);
+export const ruleSetApi = new RuleSetClient(baseUrl, http);
 
 export interface CreateRequestDTO {
   startDate: string;
