@@ -16,8 +16,8 @@ export const dayOffApi = new DayOffClient(baseUrl, http);
 export interface CreateRequestDTO {
   startDate: string;
   endDate: string;
-  holidayKind: number;
   hours: number;
+  holidayKind: "law" | "agreed";
 }
 
 export const requestApi = {
