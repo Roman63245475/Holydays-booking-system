@@ -21,22 +21,28 @@ public class RequestController : ControllerBase
         if (!Guid.TryParse(userValue, out var userId))
             return Unauthorized();
 
-        if (!DateOnly.TryParseExact(requestDTO.startDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startDate)
-            || !DateOnly.TryParseExact(requestDTO.endDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var endDate)
+        if (!string.Equals(requestDTO.HolidayKind, "law", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(requestDTO.HolidayKind, "agreed", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest("Holiday kind must be 'law' or 'agreed'.");
+        }
+
+        if (!DateOnly.TryParseExact(requestDTO.StartDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startDate)
+            || !DateOnly.TryParseExact(requestDTO.EndDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var endDate)
             || endDate < startDate
-            || requestDTO.hours < 0
-            || !Enum.IsDefined(requestDTO.holidayKind))
+            || requestDTO.Hours < 0)
         {
             return BadRequest("Invalid holiday request.");
         }
 
-        var request = new HolidayRequest
+        var request = new CreateRequestDTO()
         {
             user_id = userId,
             StartDate = startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             EndDate = endDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            HolidayKind = requestDTO.holidayKind,
-            Hours = requestDTO.hours,
+            created_at = DateTime.UtcNow,
+            Hours = requestDTO.Hours,
+            HolidayKind = requestDTO.HolidayKind,
             RequestStatus = RequestStatus.Pending
         };
 

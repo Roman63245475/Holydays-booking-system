@@ -422,13 +422,7 @@ export interface LoginUserDTO {
 export interface CreateRequestDTO {
     startDate?: string;
     endDate?: string;
-    holidayKind?: HolidayKind;
     hours?: number;
-}
-
-export enum HolidayKind {
-    Law = 0,
-    Agreed = 1,
 }
 
 export interface RuleSetDTO {
@@ -492,6 +486,8 @@ export interface UserViewPage {
     agreed_earned_holiday_hours?: number;
     agreed_used_holiday_hours?: number;
     available_holiday_hours?: number;
+    agreed_earning_period_start?: Date;
+    law_earning_period_start?: Date;
     law_earned_holiday_hours?: number;
     law_used_holiday_hours?: number;
     law_available_holiday_hours?: number;
