@@ -7,7 +7,7 @@ public class HolidayRequest
     public string StartDate { get; set; }
     public string EndDate { get; set; }
     public int Hours { get; set; }
-    public HolidayKind HolidayKind { get; set; }
+    public HolidayType HolidayType { get; set; }
     public RequestStatus RequestStatus { get; set; }
     
     

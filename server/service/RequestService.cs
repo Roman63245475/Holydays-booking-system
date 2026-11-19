@@ -20,4 +20,15 @@ public class RequestService
 
         return await db.HolidayRequest.InsertWithOutputAsync(request);
     }
+
+    public async Task<List<HolidayRequestUser>> GetRequests() {
+        return await db.HolidayRequest.Where(r => r.RequestStatus == RequestStatus.Pending).Join(db.users, r => r.user_id, u => u.id, (r, u) => new HolidayRequestUser {
+            Id = r.id,
+            Name = u.name,
+            StartDate = r.StartDate,
+            EndDate = r.EndDate,
+            HolidayType = r.HolidayType,
+            Status = r.RequestStatus
+        }).ToListAsync();
+    }
 }

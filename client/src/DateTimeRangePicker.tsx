@@ -48,7 +48,7 @@ export function DateTimeRangePicker({ onChange, holidayKind }: Props) {
             await requestApi.create({
                 startDate: range.startDate,
                 endDate: range.endDate,
-                holidayKind: holidayKind === "agreed" ? 1 : 0,
+                holidayType: holidayKind === "agreed" ? 2 : 1,
                 hours: Math.ceil(requestedWorkMinutes / 60),
             });
             window.alert("Your holiday request was submitted.");

@@ -25,7 +25,7 @@ public class RequestController : ControllerBase
             || !DateOnly.TryParseExact(requestDTO.endDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var endDate)
             || endDate < startDate
             || requestDTO.hours < 0
-            || !Enum.IsDefined(requestDTO.holidayKind))
+            || !Enum.IsDefined(requestDTO.holidayType))
         {
             return BadRequest("Invalid holiday request.");
         }
@@ -35,12 +35,18 @@ public class RequestController : ControllerBase
             user_id = userId,
             StartDate = startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             EndDate = endDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            HolidayKind = requestDTO.holidayKind,
+            HolidayType = requestDTO.holidayType,
             Hours = requestDTO.hours,
             RequestStatus = RequestStatus.Pending
         };
 
         var createdRequest = await requestService.SendRequest(request);
         return Ok(createdRequest);
+    }
+
+    [HttpGet("requests/getRequests")]
+    public async Task<ActionResult<List<HolidayRequestUser>>> GetRequests() {
+        var requests = await requestService.GetRequests();
+        return Ok(requests);
     }
 }

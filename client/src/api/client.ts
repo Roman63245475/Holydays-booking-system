@@ -1,4 +1,4 @@
-import {LoginClient, TimeClient, UserClient} from "./Api";
+import {LoginClient, RequestClient, TimeClient, UserClient} from "./Api";
 
 const baseUrl = "http://localhost:5232";
 
@@ -10,27 +10,4 @@ const http = {
 export const loginApi = new LoginClient(baseUrl, http);
 export const userApi = new UserClient(baseUrl, http);
 export const timeApi = new TimeClient(baseUrl, http);
-
-export interface CreateRequestDTO {
-  startDate: string;
-  endDate: string;
-  holidayKind: number;
-  hours: number;
-}
-
-export const requestApi = {
-  async create(request: CreateRequestDTO): Promise<void> {
-    const response = await http.fetch(`${baseUrl}/request/create`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify(request),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Request submission failed (${response.status}): ${await response.text()}`);
-    }
-  },
-};
+export const requestApi = new RequestClient(baseUrl, http);
