@@ -7,7 +7,7 @@ import { DateTimeRangePicker } from "../DateTimeRangePicker";
 import { HolidayBalance, type HolidayKind } from "../HolidayBalance";
 
 export function User() {
-    const [user, setUser] = useState<ClientUser | null>(null);
+    const [user, setUser] = useState<UserViewPage | null>(null);
     const [activeTab, setActiveTab] = useState<"home" | "history" | "request">("home");
     const [selectedHolidayKind, setSelectedHolidayKind] = useState<HolidayKind | null>(null);
     const navigate = useNavigate();
@@ -46,10 +46,10 @@ export function User() {
                         <div className="holiday-balances">
                             <HolidayBalance
                                 title="Weeks 1-5"
-                                earned={user?.law_earned_holiday_day}
-                                used={user?.law_used_holiday_day}
-                                remaining={user?.available_holiday_days}
-                                unit="days"
+                                earned={user?.law_earned_holiday_hours}
+                                used={user?.law_used_holiday_hours}
+                                remaining={user?.law_available_holiday_hours}
+                                unit="hours"
                                 value="law"
                                 onSelect={(kind) => {
                                     setSelectedHolidayKind(kind);

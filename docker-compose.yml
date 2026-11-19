@@ -33,6 +33,8 @@ services:
     environment:
       ConnectionStrings__connection_string: "Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
       ConnectionStrings__redis: "redis:6379"
+      # the container runs in UTC by default, DateTime.Now (e.g. a new user's start date) must be Danish time
+      TZ: "Europe/Copenhagen"
     ports:
       - "5232:8080"
     volumes:

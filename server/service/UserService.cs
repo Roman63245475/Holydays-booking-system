@@ -13,15 +13,17 @@ public class UserService
     private Database db;
     private HolidayAccountsService holidayAccountsService;
     private HolidayHistoryService holidayHistoryService;
+    private ScheduleService scheduleService;
 
-    public UserService(Database db, HolidayAccountsService holidayAccountsService, HolidayHistoryService holidayHistoryService)
+    public UserService(Database db, HolidayAccountsService holidayAccountsService, HolidayHistoryService holidayHistoryService, ScheduleService scheduleService)
     {
+        this.scheduleService = scheduleService;
         this.db = db;
         this.holidayAccountsService = holidayAccountsService;
         this.holidayHistoryService = holidayHistoryService;
     }
 
-    public async Task create_user(User user)
+    public async Task create_user(User user, Schedule schedule)
     {
         PasswordHasher<User> hasher = new PasswordHasher<User>();
         var hashedPassword = hasher.HashPassword(user, user.password);
@@ -30,6 +32,8 @@ public class UserService
         try
         {
             User inserted = await db.users.InsertWithOutputAsync(user);
+            // in the same transaction: a user is never saved without a schedule
+            await scheduleService.create_first_schedule(inserted, schedule);
             var (law_holidays, agreed_holidays) = await holidayAccountsService.initialize_users_holidays_accounts(inserted);
             await holidayHistoryService.create_history_records(law_holidays, agreed_holidays, inserted.start_date);
 
@@ -45,7 +49,7 @@ public class UserService
     public async Task<List<ClientUser>> get_all_users()
     {
         List<ClientUser> users = await db.users.Select(u => new ClientUser
-            { id = u.id, name = u.name, email = u.email, role = u.role, salary = u.salary, start_date = u.start_date }).ToListAsync();
+            { id = u.id, name = u.name, email = u.email, role = u.role, start_date = u.start_date }).ToListAsync();
         return users;
     }
 
@@ -70,9 +74,9 @@ public class UserService
                 agreed_used_holiday_hours = x.Agreed.used_holiday_hours,
                 available_holiday_hours =
                     x.Agreed.earned_holiday_hours - x.Agreed.used_holiday_hours,
-                law_earned_holiday_day = x.Law.earned_holiday_days,
-                law_used_holiday_day = x.Law.used_holiday_days,
-                available_holiday_days = x.Law.earned_holiday_days -  x.Law.used_holiday_days
+                law_earned_holiday_hours = x.Law.earned_holiday_hours,
+                law_used_holiday_hours = x.Law.used_holiday_hours,
+                law_available_holiday_hours = x.Law.earned_holiday_hours - x.Law.used_holiday_hours
             })
             .FirstOrDefaultAsync();
     }

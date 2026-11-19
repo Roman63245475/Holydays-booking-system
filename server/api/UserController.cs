@@ -18,11 +18,24 @@ public class UserController: ControllerBase
     [HttpPost(nameof(create))]
     public async Task<IActionResult> create([FromBody] CreateUserDTO userDTO)
     {
+        if (userDTO.schedule == null)
+        {
+            return BadRequest("schedule is required");
+        }
+
+        string? schedule_error = userDTO.schedule.validate();
+        if (schedule_error != null)
+        {
+            return BadRequest(schedule_error);
+        }
+
+        Schedule schedule = userDTO.schedule.to_schedule();
+
         DateOnly today = DateOnly.FromDateTime(DateTime.Now);
-        User user = new User(userDTO.name, userDTO.email, userDTO.password, userDTO.role, userDTO.salary, today);
+        User user = new User(userDTO.name, userDTO.email, userDTO.password, userDTO.role, today);
         try
         {
-            await userService.create_user(user);
+            await userService.create_user(user, schedule);
             return Ok();
         }
         catch (Exception e)
@@ -42,7 +55,7 @@ public class UserController: ControllerBase
      * An endpoint created to get the certain users data from their
      * session after they logged in.
      */
-    public async Task<ActionResult<ClientUser>> me()
+    public async Task<ActionResult<UserViewPage>> me()
     {
         var userValue = HttpContext.Session.GetString("userId");
         if (!Guid.TryParse(userValue, out var userId))

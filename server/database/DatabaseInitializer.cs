@@ -17,6 +17,12 @@ public class DatabaseInitializer
         db.Execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email)"
         );
+        // the system does not handle money (payroll does), so salary was removed from the model.
+        // CreateIfNotExists does not change an already existing table, so the old columns are dropped here
+        // (otherwise inserting a user fails on the NOT NULL salary column)
+        db.Execute(
+            "ALTER TABLE users DROP COLUMN IF EXISTS salary, DROP COLUMN IF EXISTS salary_type"
+        );
 
         db.CreateTable<HolidayRequest>(
             tableOptions: TableOptions.CreateIfNotExists
@@ -122,6 +128,29 @@ public class DatabaseInitializer
         );
         db.Execute(
             "CREATE INDEX IF NOT EXISTS ix_agreed_holidays_history_account_id ON agreed_holidays_history (account_id)"
+        );
+
+        // schedules
+        db.CreateTable<Schedule>(
+            tableOptions: TableOptions.CreateIfNotExists
+        );
+        db.Execute(
+            "ALTER TABLE schedules ALTER COLUMN id SET DEFAULT gen_random_uuid()"
+        );
+        db.Execute(@"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_schedules_user') THEN
+                    ALTER TABLE schedules
+                        ADD CONSTRAINT fk_schedules_user
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+                END IF;
+            END $$;"
+        );
+        // one user can not have two schedules starting on the same day
+        // (the index on (user_id, effective_from) is also used to find the schedule of a user)
+        db.Execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_schedules_user_effective_from ON schedules (user_id, effective_from)"
         );
     }
 }

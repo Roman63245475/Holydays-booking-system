@@ -313,7 +313,7 @@ export class UserClient {
         return Promise.resolve<ClientUser[]>(null as any);
     }
 
-    me(): Promise<ClientUser> {
+    me(): Promise<UserViewPage> {
         let url_ = this.baseUrl + "/me";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -329,13 +329,13 @@ export class UserClient {
         });
     }
 
-    protected processMe(response: Response): Promise<ClientUser> {
+    protected processMe(response: Response): Promise<UserViewPage> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
             return response.text().then((_responseText) => {
             let result200: any = null;
-            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ClientUser;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserViewPage;
             return result200;
             });
         } else if (status !== 200 && status !== 204) {
@@ -343,7 +343,7 @@ export class UserClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             });
         }
-        return Promise.resolve<ClientUser>(null as any);
+        return Promise.resolve<UserViewPage>(null as any);
     }
 }
 
@@ -351,7 +351,6 @@ export interface ClientUser {
     id?: string;
     name?: string;
     email?: string;
-    salary?: number;
     start_date?: Date;
     role?: Role;
 }
@@ -399,7 +398,31 @@ export interface CreateUserDTO {
     email?: string;
     password?: string;
     role?: Role;
-    salary?: number;
+    schedule?: ScheduleDTO;
+}
+
+export interface ScheduleDTO {
+    monday_start?: string | undefined;
+    monday_end?: string | undefined;
+    tuesday_start?: string | undefined;
+    tuesday_end?: string | undefined;
+    wednesday_start?: string | undefined;
+    wednesday_end?: string | undefined;
+    thursday_start?: string | undefined;
+    thursday_end?: string | undefined;
+    friday_start?: string | undefined;
+    friday_end?: string | undefined;
+}
+
+export interface UserViewPage {
+    name?: string;
+    email?: string;
+    agreed_earned_holiday_hours?: number;
+    agreed_used_holiday_hours?: number;
+    available_holiday_hours?: number;
+    law_earned_holiday_hours?: number;
+    law_used_holiday_hours?: number;
+    law_available_holiday_hours?: number;
 }
 
 export interface FileResponse {
