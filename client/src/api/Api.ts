@@ -179,6 +179,92 @@ export class RequestClient {
     }
 }
 
+export class RuleSetClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5232";
+    }
+
+    get_parameters(): Promise<RuleSetDTO> {
+        let url_ = this.baseUrl + "/get_parameters";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGet_parameters(_response);
+        });
+    }
+
+    protected processGet_parameters(response: Response): Promise<RuleSetDTO> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as RuleSetDTO;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<RuleSetDTO>(null as any);
+    }
+
+    set_parameters(ruleSetDTO: RuleSetDTO): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/set_parameters";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(ruleSetDTO);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processSet_parameters(_response);
+        });
+    }
+
+    protected processSet_parameters(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+}
+
 export class TimeClient {
     private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
     private baseUrl: string;
@@ -393,12 +479,38 @@ export enum RequestStatus {
     Pending = 2,
 }
 
-export interface CreateUserDTO {
-    name?: string;
-    email?: string;
-    password?: string;
-    role?: Role;
-    schedule?: ScheduleDTO;
+export interface RuleSetDTO {
+    effective_from?: Date;
+    weeks1to5_month_rate?: number;
+    weeks1to5_earning_start_month?: number;
+    weeks1to5_earning_end_month?: number;
+    weeks1to5_usage_start_month?: number;
+    weeks1to5_usage_start_year_offset?: number;
+    weeks1to5_usage_end_month?: number;
+    weeks1to5_usage_end_year_offset?: number;
+    week6_enabled?: boolean;
+    week6_hours_per_month?: number;
+    week6_earning_start_month?: number;
+    week6_earning_end_month?: number;
+    week6_usage_start_month?: number;
+    week6_usage_start_year_offset?: number;
+    week6_usage_end_month?: number;
+    week6_usage_end_year_offset?: number;
+    main_holiday_length_days?: number;
+    main_holiday_start_month?: number;
+    main_holiday_end_month?: number;
+    main_holiday_notice_months?: number;
+    other_holiday_notice_months?: number;
+    standard_week?: ScheduleDTO;
+    transfer_allowed?: boolean;
+    transfer_max_days?: number;
+    transfer_weeks1to5_deadline_month?: number;
+    transfer_weeks1to5_deadline_day?: number;
+    transfer_week6_deadline_month?: number;
+    transfer_week6_deadline_day?: number;
+    max_holiday_debt_days?: number;
+    non_negative_balance_month?: number;
+    non_negative_balance_day?: number;
 }
 
 export interface ScheduleDTO {
@@ -412,6 +524,14 @@ export interface ScheduleDTO {
     thursday_end?: string | undefined;
     friday_start?: string | undefined;
     friday_end?: string | undefined;
+}
+
+export interface CreateUserDTO {
+    name?: string;
+    email?: string;
+    password?: string;
+    role?: Role;
+    schedule?: ScheduleDTO;
 }
 
 export interface UserViewPage {

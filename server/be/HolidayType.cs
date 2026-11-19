@@ -2,6 +2,6 @@ namespace be;
 
 public enum HolidayType
 {
-    FerieEfterFerieloven = 1,
-    FerieUge = 2
+    FerieEfterFerieloven = 1, //law holidays
+    FerieUge = 2 // agreed_holidays
 }

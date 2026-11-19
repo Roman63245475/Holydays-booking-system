@@ -10,29 +10,9 @@ public class AccuralService
 {
     private Database db;
     
-    // the dates below are a template of ONE earning period, built for HolidayParameters.REFERENCE_YEAR from parameters.json.
-    // for a real account they are moved to the needed year with AddYears (see start_new_earning_periods)
-
-    // weeks 1-5 (FerieEfterFerieloven -> LawHolidays)
-    private DateOnly law_earning_period_start;
-    private DateOnly law_earning_period_end;
-    private DateOnly law_usage_period_start;
-    private DateOnly law_usage_period_end;
-
-    // week 6 (FerieUge -> AgreedHolidays)
-    private DateOnly agreed_earning_period_start;
-    private DateOnly agreed_earning_period_end;
-    private DateOnly agreed_usage_period_start;
-    private DateOnly agreed_usage_period_end;
-
     public AccuralService(Database db)
     {
         this.db = db;
-
-        (law_earning_period_start, law_earning_period_end, law_usage_period_start, law_usage_period_end)
-            = HolidayParameters.build_period_dates("weeks1To5");
-        (agreed_earning_period_start, agreed_earning_period_end, agreed_usage_period_start, agreed_usage_period_end)
-            = HolidayParameters.build_period_dates("week6");
     }
 
     public async Task accrue_holidays()
@@ -210,7 +190,9 @@ public class AccuralService
                 throw new Exception($"User {holiday.user_id} has no working schedule on {history.period_start}, holidays can not be accrued");
             }
 
-            decimal month_rate = holiday.get_month_rate_hours(schedule);
+            // the rules that applied in the accrued month (a later change of the rules must not affect this month)
+            RuleSet rule_set = HolidayParameters.get_rule_set(history.period_start);
+            decimal month_rate = holiday.get_month_rate_hours(schedule, rule_set);
 
             // +1 because both period_start and period_end are included (13..30 = 18 days)
             int days = history.period_end.DayNumber - history.period_start.DayNumber + 1;
@@ -292,23 +274,12 @@ public class AccuralService
         List<Guid> user_ids = new List<Guid>();
         foreach (var old_account in ended_accounts)
         {
-            // template dates of this holiday type (from parameters.json, built for HolidayParameters.REFERENCE_YEAR)
-            bool is_law = h_type == HolidayType.FerieEfterFerieloven;
-            DateOnly t_earning_start = is_law ? law_earning_period_start : agreed_earning_period_start;
-            DateOnly t_earning_end = is_law ? law_earning_period_end : agreed_earning_period_end;
-            DateOnly t_usage_start = is_law ? law_usage_period_start : agreed_usage_period_start;
-            DateOnly t_usage_end = is_law ? law_usage_period_end : agreed_usage_period_end;
-
             // the new earning period starts the day after the old one ended,
-            // the difference in years moves the whole template to that year
-            int years_shift = old_account.earning_period_end.AddDays(1).Year - t_earning_start.Year;
+            // its dates come from the rules that apply on that day
+            var (earning_start, earning_end, usage_start, usage_end) =
+                HolidayParameters.get_account_dates(h_type, old_account.earning_period_end.AddDays(1));
 
-            DateOnly earning_start = t_earning_start.AddYears(years_shift);
-            DateOnly earning_end = t_earning_end.AddYears(years_shift);
-            DateOnly usage_start = t_usage_start.AddYears(years_shift);
-            DateOnly usage_end = t_usage_end.AddYears(years_shift);
-
-            // new() lets us create THoliday via its parameterless constructor (it also sets month_rate),
+            // new() lets us create THoliday via its parameterless constructor,
             // earned and used holidays stay 0 by default
             new_accounts.Add(new THoliday
             {

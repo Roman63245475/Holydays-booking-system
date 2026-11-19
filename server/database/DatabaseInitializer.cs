@@ -152,5 +152,24 @@ public class DatabaseInitializer
         db.Execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS ux_schedules_user_effective_from ON schedules (user_id, effective_from)"
         );
+    
+        // rule_sets (admin-editable holiday rules with effective_from)
+        db.CreateTable<RuleSet>(
+            tableOptions: TableOptions.CreateIfNotExists
+        );
+        db.Execute(
+            "ALTER TABLE rule_sets ALTER COLUMN id SET DEFAULT gen_random_uuid()"
+        );
+        // only one rule set can start on a date
+        // (the index is also used to find the rule set that applies on a date)
+        db.Execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_rule_sets_effective_from ON rule_sets (effective_from)"
+        );
+        // the first rule set on an empty db: the Business Esbjerg rules, valid "since always" (2000-01-01)
+        // until the admin adds a new rule set
+        if (!db.rule_sets.Any())
+        {
+            db.Insert(RuleSetPresets.business_esbjerg(new DateOnly(2000, 1, 1)));
+        }
     }
 }
