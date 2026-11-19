@@ -17,8 +17,6 @@ public abstract class HolidayAccount
     public HolidayType holiday_type { get; set; }
     private string name { get; set; }
 
-    protected decimal month_rate;
-    
     protected HolidayHistory holiday_history { get; set; }
     
     public bool active { get; set; }
@@ -42,8 +40,8 @@ public abstract class HolidayAccount
     // returns the earned total in hours (earned_holiday_hours)
     public abstract decimal get_earned();
 
-    // hours earned in one full month with the given working schedule
-    public abstract decimal get_month_rate_hours(Schedule schedule);
+    // hours earned in one full month with the given working schedule and the rules of that month
+    public abstract decimal get_month_rate_hours(Schedule schedule, RuleSet rule_set);
 
     private void define_name()
     {

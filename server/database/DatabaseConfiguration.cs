@@ -19,6 +19,7 @@ public static class DatabaseConfiguration
         AgreedHolidaysHistoryMapping.Configure(builder);
         HolidayRequestMapping.Configure(builder);
         ScheduleMapping.Configure(builder);
+        RuleSetMapping.Configure(builder);
 
         builder.Build();
 

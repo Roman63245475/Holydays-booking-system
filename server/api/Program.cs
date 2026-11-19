@@ -1,3 +1,4 @@
+using be;
 using api;
 using database;
 using service;
@@ -26,6 +27,8 @@ var connection_string = builder.Configuration.GetConnectionString("connection_st
     ?? throw new InvalidOperationException("Connection string 'connection_string' not found.");
 using var db = DatabaseConfiguration.Create(connection_string);
 DatabaseInitializer.Initialize(db);
+// all rule sets are kept in memory, calculations ask HolidayParameters for the rules of a date
+HolidayParameters.load(db.rule_sets.ToList());
 builder.Services.AddScoped<Database>(
     _ => DatabaseConfiguration.Create(connection_string)
 );
@@ -49,6 +52,7 @@ builder.Services.AddScoped<LoginService>();
 builder.Services.AddScoped<HolidayAccountsService>();
 builder.Services.AddScoped<HolidayHistoryService>();
 builder.Services.AddScoped<ScheduleService>();
+builder.Services.AddScoped<RulesetService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<RequestService>();
 builder.Services.AddScoped<AccuralService>();
