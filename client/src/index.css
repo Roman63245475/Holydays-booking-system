@@ -452,3 +452,16 @@ button:disabled{
 button:disabled:hover{
   background-color: rgb(59 130 246 / 0.03);
 }
+
+/* year picker of the Holidays tab: < [year] > */
+.year-picker{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.year-picker input{
+  width: 100px;
+  text-align: center;
+}

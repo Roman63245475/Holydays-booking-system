@@ -20,4 +20,5 @@ public class Database: DataConnection
     public ITable<HolidayRequest> HolidayRequest => this.GetTable<HolidayRequest>();
     public ITable<Schedule> schedules => this.GetTable<Schedule>();
     public ITable<RuleSet> rule_sets => this.GetTable<RuleSet>();
+    public ITable<DayOff> days_off => this.GetTable<DayOff>();
 }

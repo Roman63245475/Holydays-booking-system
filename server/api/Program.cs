@@ -53,6 +53,12 @@ builder.Services.AddScoped<HolidayAccountsService>();
 builder.Services.AddScoped<HolidayHistoryService>();
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<RulesetService>();
+// DayOffService gets an HttpClient for the public holidays API (Nager.Date, free, no key needed)
+builder.Services.AddHttpClient<DayOffService>(client =>
+{
+    client.BaseAddress = new Uri("https://date.nager.at/api/v3/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<RequestService>();
 builder.Services.AddScoped<AccuralService>();
