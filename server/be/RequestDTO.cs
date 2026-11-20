@@ -2,7 +2,7 @@ using be;
 
 namespace api;
 
-public class CreateRequestDTO
+public class RequestDTO
 {
     public Guid user_id { get; set; }
     public string StartDate { get; set; }
