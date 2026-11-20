@@ -1,3 +1,4 @@
+using api;
 using be;
 using database;
 using LinqToDB;
@@ -74,10 +75,33 @@ public class UserService
                 agreed_used_holiday_hours = x.Agreed.used_holiday_hours,
                 available_holiday_hours =
                     x.Agreed.earned_holiday_hours - x.Agreed.used_holiday_hours,
+                agreed_earning_period_start = x.Agreed.earning_period_start,
+                law_earning_period_start = x.Law.earning_period_start,
                 law_earned_holiday_hours = x.Law.earned_holiday_hours,
                 law_used_holiday_hours = x.Law.used_holiday_hours,
                 law_available_holiday_hours = x.Law.earned_holiday_hours - x.Law.used_holiday_hours
             })
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<Guid?> get_accId(Guid userId, string kind)
+    {
+        if (string.Equals(kind, "law", StringComparison.OrdinalIgnoreCase))
+        {
+            return await db.law_holidays
+                .Where(account => account.user_id == userId && account.active)
+                .Select(account => (Guid?)account.id)
+                .FirstOrDefaultAsync();
+        }
+
+        if (string.Equals(kind, "agreed", StringComparison.OrdinalIgnoreCase))
+        {
+            return await db.agreed_holidays
+                .Where(account => account.user_id == userId && account.active)
+                .Select(account => (Guid?)account.id)
+                .FirstOrDefaultAsync();
+        }
+
+        return null;
     }
 }

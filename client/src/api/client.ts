@@ -1,4 +1,4 @@
-import {LoginClient, RuleSetClient, RequestClient, TimeClient, UserClient} from "./Api";
+import {LoginClient, RuleSetClient, DayOffClient, RequestClient, TimeClient, UserClient} from "./Api";
 
 const baseUrl = "http://localhost:5232";
 
@@ -11,4 +11,5 @@ export const loginApi = new LoginClient(baseUrl, http);
 export const userApi = new UserClient(baseUrl, http);
 export const timeApi = new TimeClient(baseUrl, http);
 export const ruleSetApi = new RuleSetClient(baseUrl, http);
+export const dayOffApi = new DayOffClient(baseUrl, http);
 export const requestApi = new RequestClient(baseUrl, http);

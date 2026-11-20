@@ -46,6 +46,7 @@ export function User() {
                         <div className="holiday-balances">
                             <HolidayBalance
                                 title="Weeks 1-5"
+                                start_period={user?.law_earning_period_start}
                                 earned={user?.law_earned_holiday_hours}
                                 used={user?.law_used_holiday_hours}
                                 remaining={user?.law_available_holiday_hours}
@@ -58,6 +59,7 @@ export function User() {
                             />
                             <HolidayBalance
                                 title="Week 6"
+                                start_period={user?.agreed_earning_period_start}
                                 earned={user?.agreed_earned_holiday_hours}
                                 used={user?.agreed_used_holiday_hours}
                                 remaining={user?.available_holiday_hours}
@@ -81,12 +83,14 @@ export function User() {
                                     ? "agreed holidays (hours)"
                                     : "holidays"}
                         </h2>
-                        <DateTimeRangePicker
-                            holidayKind={selectedHolidayKind ?? "law"}
-                            onChange={(range) => {
-                                console.log("Selected range:", range);
-                            }}
-                        />
+                        {selectedHolidayKind ? (
+                            <DateTimeRangePicker
+                                holidayKind={selectedHolidayKind}
+                                onChange={(range) => {
+                                    console.log("Selected range:", range);
+                                }}
+                            />
+                        ) : <p>Please select a holiday balance first.</p>}
                     </div>
                 ) : null}
             </main>

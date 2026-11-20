@@ -1,7 +1,7 @@
 
 import {useState} from "react";
 import {requestApi} from "./api/client";
-import type {HolidayKind as UserHolidayKind} from "./HolidayBalance";
+import type { HolidayKind } from "./HolidayBalance";
 
 export interface DateTimeRange {
     startDate: string;
@@ -9,11 +9,11 @@ export interface DateTimeRange {
 }
 
 interface Props {
+    holidayKind: HolidayKind;
     onChange?: (range: DateTimeRange) => void;
-    holidayKind: UserHolidayKind;
 }
 
-export function DateTimeRangePicker({ onChange, holidayKind }: Props) {
+export function DateTimeRangePicker({ holidayKind, onChange }: Props) {
     const [range, setRange] = useState<DateTimeRange>({
         startDate: "2026-11-13",
         endDate: "2026-11-13",
@@ -48,8 +48,8 @@ export function DateTimeRangePicker({ onChange, holidayKind }: Props) {
             await requestApi.create({
                 startDate: range.startDate,
                 endDate: range.endDate,
-                holidayType: holidayKind === "agreed" ? 2 : 1,
                 hours: Math.ceil(requestedWorkMinutes / 60),
+                holidayKind,
             });
             window.alert("Your holiday request was submitted.");
         } catch (error) {

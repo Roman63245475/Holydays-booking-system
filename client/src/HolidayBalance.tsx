@@ -6,8 +6,9 @@ interface HolidayBalanceProps {
     used?: number;
     remaining?: number;
     unit: "days" | "hours";
+    start_period?: Date | string;
     value: HolidayKind;
-    onSelect: (kind: HolidayKind) => void;
+    onSelect: (value: HolidayKind) => void;
 }
 
 export function HolidayBalance({
@@ -17,8 +18,14 @@ export function HolidayBalance({
     remaining,
     unit,
     value,
+    start_period,
     onSelect,
 }: HolidayBalanceProps) {
+    const startPeriodDate = start_period ? new Date(start_period) : null;
+    const formattedStartPeriod = startPeriodDate && !Number.isNaN(startPeriodDate.getTime())
+        ? startPeriodDate.toLocaleDateString()
+        : "—";
+
     return (
         <section className="holiday-balance-card">
             <h2 className="holiday-balance-title">{title}</h2>
@@ -29,6 +36,7 @@ export function HolidayBalance({
                 <span>{unit}</span>
             </div>
             <div className="holiday-balance-details">
+                <p><span>Earning Period Start</span><strong>{formattedStartPeriod}</strong></p>
                 <p><span>Earned</span><strong>{earned ?? "—"} {unit}</strong></p>
                 <p><span>Used</span><strong>{used ?? "—"} {unit}</strong></p>
             </div>

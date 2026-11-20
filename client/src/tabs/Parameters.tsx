@@ -1,8 +1,9 @@
 import "../index.css";
 import {useEffect, useState} from "react";
-import {ApiException, type RuleSetDTO, type ScheduleDTO} from "@/api/Api.ts";
+import {type RuleSetDTO, type ScheduleDTO} from "@/api/Api.ts";
 import {ScheduleInputs} from "@/ScheduleInputs.tsx";
 import {ruleSetApi} from "@/api/client.ts";
+import {errorText} from "@/api/errors.ts";
 
 const months = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
@@ -138,7 +139,7 @@ export function Parameters() {
             await loadRules();
         } catch (err) {
             // the backend returns the reason (e.g. "The rules can not start before 2027-05-01: ...")
-            setMessage({text: err instanceof ApiException ? err.response : "Failed to save the rules", error: true});
+            setMessage({text: errorText(err, "Failed to save the rules"), error: true});
             console.error(err);
         }
     }

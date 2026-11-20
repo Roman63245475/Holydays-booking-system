@@ -20,6 +20,7 @@ public static class DatabaseConfiguration
         HolidayRequestMapping.Configure(builder);
         ScheduleMapping.Configure(builder);
         RuleSetMapping.Configure(builder);
+        DayOffMapping.Configure(builder);
 
         builder.Build();
 
