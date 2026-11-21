@@ -225,7 +225,7 @@ export class RequestClient {
         this.baseUrl = baseUrl ?? "http://localhost:5232";
     }
 
-    create(requestDTO: CreateRequestDTO): Promise<FileResponse> {
+    create(requestDTO: RequestDTO): Promise<FileResponse> {
         let url_ = this.baseUrl + "/request/create";
         url_ = url_.replace(/[?&]$/, "");
 
@@ -673,7 +673,7 @@ export interface LoginUserDTO {
     password?: string;
 }
 
-export interface CreateRequestDTO {
+export interface RequestDTO {
     user_id?: string;
     startDate?: string;
     endDate?: string;
