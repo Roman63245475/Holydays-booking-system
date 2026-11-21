@@ -64,7 +64,22 @@ public class RequestService
     }
 
     public async Task AcceptRequest(Guid id) {
+        await using var transaction = await db.BeginTransactionAsync();
+        var request = await db.HolidayRequest.FirstOrDefaultAsync(r => r.id == id && r.RequestStatus == RequestStatus.Pending);
+        
+        if (request == null) return;
+        
         await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Accepted).UpdateAsync();
+
+        var updateLaw = await db.law_holidays.Where(l => l.id == request.account_id)
+            .Set(l => l.used_holiday_hours, l => l.used_holiday_hours + request.Hours).UpdateAsync();
+
+        if (updateLaw == 0) {
+            await db.agreed_holidays.Where(a => a.id == request.account_id)
+                .Set(r => r.used_holiday_hours, r => r.used_holiday_hours + request.Hours).UpdateAsync();
+        }
+        
+        await transaction.CommitAsync();
     }
 
     public async Task<RequestDTO[]> GetOngoingRequests(Guid userId)
