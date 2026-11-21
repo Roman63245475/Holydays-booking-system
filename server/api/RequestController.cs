@@ -29,7 +29,7 @@ public class RequestController : ControllerBase
     }
 
     [HttpPost("request/create")]
-    public async Task<IActionResult> create([FromBody] CreateRequestDTO requestDTO)
+    public async Task<IActionResult> create([FromBody] RequestDTO requestDTO)
     {
         var userValue = HttpContext.Session.GetString("userId");
         if (!Guid.TryParse(userValue, out var userId))
@@ -49,7 +49,7 @@ public class RequestController : ControllerBase
             return BadRequest("Invalid holiday request.");
         }
 
-        var request = new CreateRequestDTO()
+        var request = new RequestDTO()
         {
             user_id = userId,
             StartDate = startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),

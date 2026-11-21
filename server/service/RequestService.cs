@@ -17,7 +17,7 @@ public class RequestService
         this.userService = userService;
     }
 
-    public async Task<HolidayRequest> SendRequest(CreateRequestDTO requestdto)
+    public async Task<HolidayRequest> SendRequest(RequestDTO requestdto)
     {
         Guid? accountId = await userService.get_accId(requestdto.user_id, requestdto.HolidayKind);
         if (accountId is null)
@@ -65,5 +65,48 @@ public class RequestService
 
     public async Task AcceptRequest(Guid id) {
         await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Accepted).UpdateAsync();
+    }
+
+    public async Task<RequestDTO[]> GetOngoingRequests(Guid userId)
+    {
+        var pendingRequests = db.HolidayRequest
+            .Where(request => request.user_id == userId
+                              && request.RequestStatus == RequestStatus.Pending);
+
+        var lawRequests = await pendingRequests
+            .Join(db.law_holidays,
+                request => request.account_id,
+                account => account.id,
+                (request, account) => new RequestDTO
+                {
+                    user_id = request.user_id,
+                    StartDate = request.StartDate,
+                    EndDate = request.EndDate,
+                    Hours = request.Hours,
+                    created_at = request.created_at,
+                    HolidayKind = "law",
+                    RequestStatus = request.RequestStatus
+                })
+            .ToArrayAsync();
+
+        var agreedRequests = await pendingRequests
+            .Join(db.agreed_holidays,
+                request => request.account_id,
+                account => account.id,
+                (request, account) => new RequestDTO
+                {
+                    user_id = request.user_id,
+                    StartDate = request.StartDate,
+                    EndDate = request.EndDate,
+                    Hours = request.Hours,
+                    created_at = request.created_at,
+                    HolidayKind = "agreed",
+                    RequestStatus = request.RequestStatus
+                })
+            .ToArrayAsync();
+
+        return lawRequests.Concat(agreedRequests)
+            .OrderByDescending(request => request.created_at)
+            .ToArray();
     }
 }
