@@ -38,14 +38,25 @@ public class RequestService
     }
 
     public async Task<List<HolidayRequestUser>> GetRequests() {
-        return await db.HolidayRequest.Where(r => r.RequestStatus == RequestStatus.Pending).Join(db.users, r => r.user_id, u => u.id, (r, u) => new HolidayRequestUser {
-            Id = r.id,
-            Name = u.name,
-            StartDate = r.StartDate,
-            EndDate = r.EndDate,
-            HolidayType = r.HolidayType,
-            Status = r.RequestStatus
-        }).ToListAsync();
+        return await db.HolidayRequest
+            .Where(r => r.RequestStatus == RequestStatus.Pending)
+            .Join(db.users, r => r.user_id, u => u.id, (r, u) => new {r, u})
+            .SelectMany(
+                x => db.law_holidays.LeftJoin(l => l.id == x.r.account_id),
+                (x, law) => new {x.r, x.u, law}
+            )
+            .SelectMany(
+                x => db.agreed_holidays.LeftJoin(a => a.id == x.r.account_id),
+                (x, agreed) => new HolidayRequestUser
+                {
+                    Id = x.r.id,
+                    Name = x.u.name,
+                    StartDate = x.r.StartDate,
+                    EndDate = x.r.EndDate,
+                    HolidayType = x.law != null ? x.law.holiday_type : agreed.holiday_type,
+                    Status = x.r.RequestStatus
+                }
+            ).ToListAsync();
     }
 
     public async Task DeclineRequest(Guid id) {

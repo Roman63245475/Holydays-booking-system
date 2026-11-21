@@ -674,9 +674,33 @@ export interface LoginUserDTO {
 }
 
 export interface CreateRequestDTO {
+    user_id?: string;
     startDate?: string;
     endDate?: string;
     hours?: number;
+    created_at?: Date;
+    holidayKind?: string;
+    requestStatus?: RequestStatus;
+}
+
+export enum RequestStatus {
+    Accepted = 0,
+    Rejected = 1,
+    Pending = 2,
+}
+
+export interface HolidayRequestUser {
+    id?: string;
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+    status?: RequestStatus;
+    holidayType?: HolidayType;
+}
+
+export enum HolidayType {
+    FerieEfterFerieloven = 1,
+    FerieUge = 2,
 }
 
 export interface RuleSetDTO {
