@@ -1,6 +1,6 @@
 import {useState} from "react";
 import {ApiException, type CreateUserDTO, Role, type ScheduleDTO} from "@/api/Api.ts";
-import {userApi} from "./api/client";
+import {userApi} from "../api/client.ts";
 import {fullTimeSchedule, ScheduleInputs} from "@/ScheduleInputs.tsx";
 // all numeric values of the enum: [1, 2, 3]
 const roles = Object.values(Role).filter((v): v is Role => typeof v === "number");

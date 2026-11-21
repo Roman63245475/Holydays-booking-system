@@ -50,7 +50,7 @@ public class UserService
     public async Task<List<ClientUser>> get_all_users()
     {
         List<ClientUser> users = await db.users.Select(u => new ClientUser
-            { name = u.name, email = u.email, role = u.role, start_date = u.start_date }).ToListAsync();
+            { id = u.id, name = u.name, email = u.email, role = u.role, start_date = u.start_date }).ToListAsync();
         return users;
     }
 

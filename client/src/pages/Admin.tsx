@@ -1,10 +1,10 @@
-import "./index.css";
+import "../index.css";
 import {useEffect, useState} from "react";
-import {EarningsTab} from "@/tabs/EarningsTab.tsx";
-import {UsersTab} from "@/tabs/UsersTab.tsx";
-import {ScheduleTab} from "@/tabs/ScheduleTab.tsx";
-import {CalendarTab} from "@/tabs/CalendarTab.tsx";
-import {ActivityTab} from "@/tabs/ActivityTab.tsx";
+import {EarningsTab} from "@/tabs/admin/EarningsTab.tsx";
+import {UsersTab} from "@/tabs/admin/UsersTab.tsx";
+import {ScheduleTab} from "@/tabs/admin/ScheduleTab.tsx";
+import {CalendarTab} from "@/tabs/admin/CalendarTab.tsx";
+import {ActivityTab} from "@/tabs/admin/ActivityTab.tsx";
 import {Parameters} from "@/tabs/Parameters.tsx";
 import {HolidaysTab} from "@/tabs/HolidaysTab.tsx";
 import {useNavigate} from "react-router";

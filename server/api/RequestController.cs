@@ -14,6 +14,20 @@ public class RequestController : ControllerBase
         this.requestService = requestService;
     }
 
+    private ActionResult? ValidateUser(Role userRole) {
+        var userId = HttpContext.Session.GetString("userId");
+        var role = HttpContext.Session.GetString("role");
+        
+        if (string.IsNullOrEmpty(userId)) {
+            return Unauthorized("Not logged in");
+        }
+        if (role != userRole.ToString()) {
+            return StatusCode(403, "You don't have enough permissions to do this operation.");
+        }
+
+        return null;
+    }
+
     [HttpPost("request/create")]
     public async Task<IActionResult> create([FromBody] RequestDTO requestDTO)
     {
@@ -50,15 +64,25 @@ public class RequestController : ControllerBase
         return Ok(createdRequest);
     }
 
-    [HttpGet(nameof(getRequests))]
-    public async Task<ActionResult<RequestDTO[]>> getRequests()
-    {
-        var userValue = HttpContext.Session.GetString("userId");
-        if (!Guid.TryParse(userValue, out var userId))
-            return Unauthorized();
-
-        var requests = await requestService.GetOngoingRequests(userId);
+    [HttpGet("requests/getRequests")]
+    public async Task<ActionResult<List<HolidayRequestUser>>> GetRequests() {
+        ValidateUser(Role.Accountant);
+        var requests = await requestService.GetRequests();
         return Ok(requests);
     }
-    
+
+    [HttpPost("requests/declineRequest/{id}")]
+    public async Task<IActionResult> DeclineRequest([FromRoute] Guid id) {
+        ValidateUser(Role.Accountant);
+        await requestService.DeclineRequest(id);
+        return Ok();
+    }
+
+    [HttpPost("requests/acceptRequest/{id}")]
+    public async Task<IActionResult> AcceptRequest([FromRoute] Guid id) {
+        
+        ValidateUser(Role.Accountant);
+        await requestService.AcceptRequest(id);
+        return Ok();
+    }
 }

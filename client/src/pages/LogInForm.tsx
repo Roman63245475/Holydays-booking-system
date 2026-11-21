@@ -1,8 +1,8 @@
-import "./index.css";
+import "../index.css";
 import {useState} from "react";
 import type {ReactFormState} from "react-dom/client";
-import { loginApi } from "./api/client";
-import {type ClientUser, type LoginUserDTO, Role} from "./api/Api";
+import { loginApi } from "../api/client.ts";
+import {type ClientUser, type LoginUserDTO, Role} from "../api/Api.ts";
 import {useNavigate} from "react-router";
 import storage from "@/storage.tsx";
 const LogInForm = () => {
@@ -26,7 +26,7 @@ const LogInForm = () => {
                 navigator('/user_page')
                 break;
             case Role.Accountant:
-                console.log("Redirect to accountant's page");
+                navigator('/accountant')
                 break;
             case Role.Admin:
                 navigator('/admin_page')

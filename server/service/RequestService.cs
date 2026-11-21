@@ -37,6 +37,36 @@ public class RequestService
         return await db.HolidayRequest.InsertWithOutputAsync(request);
     }
 
+    public async Task<List<HolidayRequestUser>> GetRequests() {
+        return await db.HolidayRequest
+            .Where(r => r.RequestStatus == RequestStatus.Pending)
+            .Join(db.users, r => r.user_id, u => u.id, (r, u) => new {r, u})
+            .SelectMany(
+                x => db.law_holidays.LeftJoin(l => l.id == x.r.account_id),
+                (x, law) => new {x.r, x.u, law}
+            )
+            .SelectMany(
+                x => db.agreed_holidays.LeftJoin(a => a.id == x.r.account_id),
+                (x, agreed) => new HolidayRequestUser
+                {
+                    Id = x.r.id,
+                    Name = x.u.name,
+                    StartDate = x.r.StartDate,
+                    EndDate = x.r.EndDate,
+                    HolidayType = x.law != null ? x.law.holiday_type : agreed.holiday_type,
+                    Status = x.r.RequestStatus
+                }
+            ).ToListAsync();
+    }
+
+    public async Task DeclineRequest(Guid id) {
+        await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Rejected).UpdateAsync();
+    }
+
+    public async Task AcceptRequest(Guid id) {
+        await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Accepted).UpdateAsync();
+    }
+
     public async Task<RequestDTO[]> GetOngoingRequests(Guid userId)
     {
         var pendingRequests = db.HolidayRequest
