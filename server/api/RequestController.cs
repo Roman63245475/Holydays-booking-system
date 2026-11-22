@@ -35,10 +35,8 @@ public class RequestController : ControllerBase
         if (!Guid.TryParse(userValue, out var userId))
             return Unauthorized();
 
-        if (!string.Equals(requestDTO.HolidayKind, "law", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(requestDTO.HolidayKind, "agreed", StringComparison.OrdinalIgnoreCase))
-        {
-            return BadRequest("Holiday kind must be 'law' or 'agreed'.");
+        if (requestDTO.account_id == Guid.Empty) {
+            return BadRequest("A valid account_id is required.");
         }
 
         if (!DateOnly.TryParseExact(requestDTO.StartDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startDate)
@@ -52,11 +50,11 @@ public class RequestController : ControllerBase
         var request = new RequestDTO()
         {
             user_id = userId,
+            account_id = requestDTO.account_id,
             StartDate = startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             EndDate = endDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             created_at = DateTime.UtcNow,
             Hours = requestDTO.Hours,
-            HolidayKind = requestDTO.HolidayKind,
             RequestStatus = RequestStatus.Pending
         };
 

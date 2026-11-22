@@ -7,19 +7,19 @@ interface HolidayBalanceProps {
     remaining?: number;
     unit: "days" | "hours";
     start_period?: Date | string;
-    value: HolidayKind;
-    onSelect: (value: HolidayKind) => void;
+    accountId: string;
+    onSelect: (accountId: string) => void;
 }
 
 export function HolidayBalance({
-    title,
-    earned,
-    used,
-    remaining,
-    unit,
-    value,
-    start_period,
-    onSelect,
+   title,
+   earned,
+   used,
+   remaining,
+   unit,
+   accountId,
+   start_period,
+   onSelect,
 }: HolidayBalanceProps) {
     const startPeriodDate = start_period ? new Date(start_period) : null;
     const formattedStartPeriod = startPeriodDate && !Number.isNaN(startPeriodDate.getTime())
@@ -43,10 +43,9 @@ export function HolidayBalance({
             <button
                 className="holiday-balance-action"
                 type="button"
-                onClick={() => onSelect(value)}
+                onClick={() => onSelect(accountId)}
             >
                 Request from this balance
-                
             </button>
         </section>
     );

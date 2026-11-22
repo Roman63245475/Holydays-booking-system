@@ -9,7 +9,7 @@ public class RequestDTO
     public string EndDate { get; set; } 
     public int Hours { get; set; }
     public DateTime created_at { get; set; }
-    public string HolidayKind { get; set; }
+    public Guid account_id { get; set; }
     public RequestStatus RequestStatus { get; set; }
     
 }

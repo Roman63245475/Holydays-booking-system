@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { loginApi, userApi } from "../api/client";
-import type {UserViewPage} from "../api/Api";
+import type { UserViewPage } from "../api/Api";
 import storage from "../storage";
 import { DateTimeRangePicker } from "../DateTimeRangePicker";
-import { HolidayBalance, type HolidayKind } from "../HolidayBalance";
+import { HolidayBalance } from "../HolidayBalance";
 
 export function User() {
     const [user, setUser] = useState<UserViewPage | null>(null);
     const [activeTab, setActiveTab] = useState<"home" | "history" | "request">("home");
-    const [selectedHolidayKind, setSelectedHolidayKind] = useState<HolidayKind | null>(null);
+    const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -22,6 +22,12 @@ export function User() {
         await loginApi.logout();
         storage.remove("user");
         navigate("/");
+    }
+
+    function handleSelectAccount(accountId: string) {
+        if (!accountId) return;
+        setSelectedAccountId(accountId);
+        setActiveTab("request");
     }
 
     return (
@@ -40,7 +46,6 @@ export function User() {
             <main className="w-100 p-16">
                 {activeTab === "home" ? (
                     <>
-                    
                         <h1>Good Morning, {user?.name}</h1>
 
                         <div className="holiday-balances">
@@ -51,11 +56,8 @@ export function User() {
                                 used={user?.law_used_holiday_hours}
                                 remaining={user?.law_available_holiday_hours}
                                 unit="hours"
-                                value="law"
-                                onSelect={(kind) => {
-                                    setSelectedHolidayKind(kind);
-                                    setActiveTab("request");
-                                }}
+                                accountId={user?.law_account_id ?? ""}
+                                onSelect={handleSelectAccount}
                             />
                             <HolidayBalance
                                 title="Week 6"
@@ -64,11 +66,8 @@ export function User() {
                                 used={user?.agreed_used_holiday_hours}
                                 remaining={user?.available_holiday_hours}
                                 unit="hours"
-                                value="agreed"
-                                onSelect={(kind) => {
-                                    setSelectedHolidayKind(kind);
-                                    setActiveTab("request");
-                                }}
+                                accountId={user?.agreed_account_id ?? ""}
+                                onSelect={handleSelectAccount}
                             />
                         </div>
                     </>
@@ -77,15 +76,15 @@ export function User() {
                 ) : activeTab === "request" ? (
                     <div className="p-8">
                         <h2>
-                            Requesting {selectedHolidayKind === "law"
-                                ? "statutory holidays (days)"
-                                : selectedHolidayKind === "agreed"
-                                    ? "agreed holidays (hours)"
-                                    : "holidays"}
+                            Requesting {selectedAccountId === user?.law_account_id
+                            ? "statutory holidays (Weeks 1-5)"
+                            : selectedAccountId === user?.agreed_account_id
+                                ? "agreed holidays (Week 6)"
+                                : "holidays"}
                         </h2>
-                        {selectedHolidayKind ? (
+                        {selectedAccountId ? (
                             <DateTimeRangePicker
-                                holidayKind={selectedHolidayKind}
+                                accountId={selectedAccountId}
                                 onChange={(range) => {
                                     console.log("Selected range:", range);
                                 }}
