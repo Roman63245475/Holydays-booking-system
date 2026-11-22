@@ -65,13 +65,14 @@ public class UserService
                 x => x.User.id,
                 l => l.user_id,
                 (x, l) => new { x.User, x.Agreed, Law = l })
-            .Where(x => x.User.id == userId)
+            .Where(x => x.User.id == userId && x.Agreed.active && x.Law.active)
             .Select(x => new UserViewPage
             {
                 name = x.User.name,
                 email = x.User.email,
+                law_account_id = x.Law.id,
+                agreed_account_id = x.Agreed.id,
                 agreed_earned_holiday_hours = x.Agreed.earned_holiday_hours,
-                
                 agreed_used_holiday_hours = x.Agreed.used_holiday_hours,
                 available_holiday_hours =
                     x.Agreed.earned_holiday_hours - x.Agreed.used_holiday_hours,

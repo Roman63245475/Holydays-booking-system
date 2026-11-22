@@ -679,7 +679,7 @@ export interface RequestDTO {
     endDate?: string;
     hours?: number;
     created_at?: Date;
-    holidayKind?: string;
+    account_id?: string;
     requestStatus?: RequestStatus;
 }
 
@@ -761,6 +761,8 @@ export interface CreateUserDTO {
 export interface UserViewPage {
     name?: string;
     email?: string;
+    law_account_id?: string;
+    agreed_account_id?: string;
     agreed_earned_holiday_hours?: number;
     agreed_used_holiday_hours?: number;
     available_holiday_hours?: number;
