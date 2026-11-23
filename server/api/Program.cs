@@ -53,6 +53,7 @@ builder.Services.AddScoped<HolidayAccountsService>();
 builder.Services.AddScoped<HolidayHistoryService>();
 builder.Services.AddScoped<ScheduleService>();
 builder.Services.AddScoped<RulesetService>();
+builder.Services.AddScoped<CurrentDateService>();
 // DayOffService gets an HttpClient for the public holidays API (Nager.Date, free, no key needed)
 builder.Services.AddHttpClient<DayOffService>(client =>
 {
@@ -65,6 +66,24 @@ builder.Services.AddScoped<AccuralService>();
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+// only an admin can create users, so on an empty db the first admin (system owner) is created here.
+// email and password come from the environment (docker-compose), with defaults for local development
+using (var scope = app.Services.CreateScope())
+{
+    Database scoped_db = scope.ServiceProvider.GetRequiredService<Database>();
+    if (!scoped_db.users.Any(u => u.role == Role.Admin))
+    {
+        string admin_email = builder.Configuration["ADMIN_EMAIL"] ?? "admin@be.dk";
+        string admin_password = builder.Configuration["ADMIN_PASSWORD"] ?? "admin";
+        DateOnly today = DateOnly.FromDateTime(DateTime.Now);
+        // the admin is an employee too, they get the company's standard working week
+        Schedule schedule = HolidayParameters.get_rule_set(today).get_standard_schedule();
+        User admin = new User("System owner", admin_email, admin_password, Role.Admin, today);
+        await scope.ServiceProvider.GetRequiredService<UserService>().create_user(admin, schedule);
+    }
+}
+
 app.UseCors("React");
 app.UseOpenApi();
 app.UseSwaggerUi();

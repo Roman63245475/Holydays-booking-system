@@ -19,7 +19,20 @@ public abstract class HolidayAccount
 
     protected HolidayHistory holiday_history { get; set; }
     
+    // active = holidays are still being EARNED on this account (its earning period is not over)
     public bool active { get; set; }
+
+    // usable = the account has not expired yet: holiday can still be requested from it.
+    // true from the moment the account is created (also before its usage period starts, e.g. week 6 earned in 2026
+    // can be requested in Nov 2026 for June 2027), set to false by next_month once usage_period_end has passed.
+    // it does NOT mean "can be spent today": whether the holiday dates fit the account is checked with covers()
+    public bool usable { get; set; } = true;
+
+    // whether a holiday from start to end (both included) lies completely inside the usage period of this account
+    public bool covers(DateOnly start, DateOnly end)
+    {
+        return usage_period_start <= start && end <= usage_period_end;
+    }
 
     protected HolidayAccount(Guid user_id, DateOnly earningPeriodStart, DateOnly earningPeriodEnd, DateOnly usagePeriodStart, DateOnly usagePeriodEnd, HolidayType holidayType, bool active)
     {
@@ -39,6 +52,9 @@ public abstract class HolidayAccount
 
     // returns the earned total in hours (earned_holiday_hours)
     public abstract decimal get_earned();
+
+    // returns the hours already spent on approved holidays (used_holiday_hours)
+    public abstract decimal get_used();
 
     // hours earned in one full month with the given working schedule and the rules of that month
     public abstract decimal get_month_rate_hours(Schedule schedule, RuleSet rule_set);

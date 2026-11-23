@@ -18,6 +18,16 @@ public class UserController: ControllerBase
     [HttpPost(nameof(create))]
     public async Task<IActionResult> create([FromBody] CreateUserDTO userDTO)
     {
+        // only the system owner (Admin) creates users. the very first admin is created on startup (Program.cs)
+        if (HttpContext.Session.GetString("userId") == null)
+        {
+            return Unauthorized();
+        }
+        if (HttpContext.Session.GetString("role") != Role.Admin.ToString())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "Only the system owner can create users");
+        }
+
         if (userDTO.schedule == null)
         {
             return BadRequest("schedule is required");
@@ -45,9 +55,20 @@ public class UserController: ControllerBase
     }
 
     [HttpGet(nameof(get_all_users))]
-    public async Task<List<ClientUser>> get_all_users()
+    public async Task<ActionResult<List<ClientUser>>> get_all_users()
     {
-        return await userService.get_all_users();
+        // the list of all employees is for the system owner and the accountant only
+        string? role = HttpContext.Session.GetString("role");
+        if (HttpContext.Session.GetString("userId") == null)
+        {
+            return Unauthorized();
+        }
+        if (role != Role.Admin.ToString() && role != Role.Accountant.ToString())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "Only the system owner and the accountant can see all users");
+        }
+
+        return Ok(await userService.get_all_users());
     }
 
     [HttpGet(nameof(me))]

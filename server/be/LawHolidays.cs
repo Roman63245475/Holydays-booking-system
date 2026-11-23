@@ -27,6 +27,11 @@ public sealed class LawHolidays: HolidayAccount
         return this.earned_holiday_hours;
     }
 
+    public override decimal get_used()
+    {
+        return this.used_holiday_hours;
+    }
+
     public LawHolidays()
     {
     }

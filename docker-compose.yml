@@ -35,6 +35,9 @@ services:
       ConnectionStrings__redis: "redis:6379"
       # the container runs in UTC by default, DateTime.Now (e.g. a new user's start date) must be Danish time
       TZ: "Europe/Copenhagen"
+      # the first admin (system owner), created on startup if the db has no admin yet
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@be.dk}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
     ports:
       - "5232:8080"
     volumes:

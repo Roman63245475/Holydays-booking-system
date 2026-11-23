@@ -30,6 +30,11 @@ public class DatabaseInitializer
         db.Execute(
             "ALTER TABLE holiday_request ALTER COLUMN id SET DEFAULT gen_random_uuid()"
         );
+        // the hours of a request are calculated from the schedule (e.g. 7.5 + 7 = 14.50), they were an integer before.
+        // CreateIfNotExists does not change an already existing table, so the type is changed here
+        db.Execute(
+            "ALTER TABLE holiday_request ALTER COLUMN \"Hours\" TYPE numeric(10,2)"
+        );
 
         db.Execute(@"
             DO $$
@@ -86,6 +91,15 @@ public class DatabaseInitializer
         );
         db.Execute(
             "CREATE INDEX IF NOT EXISTS ix_agreed_holidays_user_id ON agreed_holidays (user_id)"
+        );
+
+        // usable = the account has not expired yet (see HolidayAccount). CreateIfNotExists does not change an already
+        // existing table, so the column is added here for dbs created before it existed
+        db.Execute(
+            "ALTER TABLE law_holidays ADD COLUMN IF NOT EXISTS usable boolean NOT NULL DEFAULT true"
+        );
+        db.Execute(
+            "ALTER TABLE agreed_holidays ADD COLUMN IF NOT EXISTS usable boolean NOT NULL DEFAULT true"
         );
 
         // law_holidays_history

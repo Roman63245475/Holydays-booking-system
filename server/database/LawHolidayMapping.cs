@@ -19,5 +19,6 @@ public class LawHolidayMapping
         builder.Entity<LawHolidays>().Property(x => x.used_holiday_hours).HasColumnName("used_holiday_hours").IsNullable(false);
         builder.Entity<LawHolidays>().Property(x => x.holiday_type).HasColumnName("holiday_type").IsNullable(false);
         builder.Entity<LawHolidays>().Property(x => x.active).HasColumnName("active").IsNullable(false);
+        builder.Entity<LawHolidays>().Property(x => x.usable).HasColumnName("usable").IsNullable(false);
     }
 }

@@ -1,6 +1,7 @@
 
 import {useState} from "react";
 import {requestApi} from "./api/client";
+import {ApiException} from "./api/Api";
 
 export interface DateTimeRange {
     startDate: string;
@@ -14,8 +15,8 @@ interface Props {
 
 export function DateTimeRangePicker({ accountId, onChange }: Props) {
     const [range, setRange] = useState<DateTimeRange>({
-        startDate: "2026-11-13",
-        endDate: "2026-11-13",
+        startDate: "",
+        endDate: "",
     });
 
     const start = range.startDate ? new Date(`${range.startDate}T00:00:00`) : new Date(NaN);
@@ -28,31 +29,25 @@ export function DateTimeRangePicker({ accountId, onChange }: Props) {
         !isNaN(end.getTime()) &&
         end >= start;
 
-    // Count whole selected weekdays: 7.5 hours Monday–Thursday and 7 hours Friday.
-    const requestedWorkMinutes = isValid
-        ? getWorkingMinutes(start, end)
-        : 0;
-
     const update = (field: keyof DateTimeRange, value: string) => {
         const updated = { ...range, [field]: value };
         setRange(updated);
         onChange?.(updated);
     };
 
-    const hours = Math.floor(requestedWorkMinutes / 60);
-    const minutes = requestedWorkMinutes % 60;
-    
+    // the server calculates the hours from the employee's schedule, public holidays and company days off
+    // and checks the balance, so only the dates are sent
     async function sendRequest() {
         try {
-            await requestApi.create({
+            const created = await requestApi.create({
                 startDate: range.startDate,
                 endDate: range.endDate,
-                hours: Math.ceil(requestedWorkMinutes / 60),
                 account_id: accountId,
             });
-            window.alert("Your holiday request was submitted.");
+            window.alert(`Your holiday request was submitted (${created.hours?.toFixed(2)} hours).`);
         } catch (error) {
-            window.alert(error instanceof Error ? error.message : "Could not submit your request.");
+            // the backend returns the reason (e.g. "Not enough holiday: the request costs 37.00 h, ...")
+            window.alert(error instanceof ApiException ? error.response : "Could not submit your request.");
         }
     }
     return (
@@ -121,19 +116,4 @@ export function DateTimeRangePicker({ accountId, onChange }: Props) {
 
         </div>
     );
-}
-
-function getWorkingMinutes(start: Date, end: Date): number {
-    let totalMinutes = 0;
-    const day = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-
-    while (day <= end) {
-        const weekday = day.getDay(); // Sunday = 0, Friday = 5, Saturday = 6
-        if (weekday >= 1 && weekday <= 5) {
-            totalMinutes += weekday === 5 ? 7 * 60 : 7.5 * 60;
-        }
-        day.setDate(day.getDate() + 1);
-    }
-
-    return Math.round(totalMinutes);
 }

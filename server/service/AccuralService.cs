@@ -9,10 +9,12 @@ namespace service;
 public class AccuralService
 {
     private Database db;
-    
-    public AccuralService(Database db)
+    private CurrentDateService currentDateService;
+
+    public AccuralService(Database db, CurrentDateService currentDateService)
     {
         this.db = db;
+        this.currentDateService = currentDateService;
     }
 
     public async Task accrue_holidays()
@@ -49,6 +51,13 @@ public class AccuralService
 
             await start_new_earning_periods<LawHolidays, LawHolidaysHistory>(ended_law_holidays, HolidayType.FerieEfterFerieloven);
             await start_new_earning_periods<AgreedHolidays, AgreedHolidaysHistory>(ended_agreed_holidays, HolidayType.FerieUge);
+
+            // the new histories are saved, so the current date is now the 1st of the next month.
+            // accounts whose usage period ended before it can not be used anymore
+            DateOnly today = await currentDateService.get_current_date();
+            await expire_accounts<LawHolidays>(today);
+            await expire_accounts<AgreedHolidays>(today);
+
             await transaction.CommitAsync();
         }
         catch (Exception e)
@@ -161,43 +170,49 @@ public class AccuralService
             .UpdateAsync();
     }
 
-    //inter thr hol.hist
-    // define amount
-    //change am in obj
-    // save obj
-    //change am in hol
-    // save hol
     // THistory defines the table the histories are updated in (LawHolidaysHistory -> law_holidays_history, ...)
+    //
+    // rounding: rounding every month on its own loses up to 0.005 h a month (week 6: 3.083 -> 3.08, 12 x 3.08 = 36.96
+    // instead of 37). so the month gets the difference between the ROUNDED EXACT TOTAL of the account up to and
+    // including this month and what was already accrued (earned). every stored value still has two decimals, but the
+    // total of the account is always the exact total rounded once (12 x 3.083 = 36.996 -> 37.00).
+    // the exact total of the earlier months is not stored, it is recalculated from their histories with the schedule
+    // and the rules that applied in those months (both are never rewritten, so the result is always the same)
     private async Task accrue_holidays_in_histories<THistory>(IEnumerable<HolidayAccount> holidays, Dictionary<Guid, List<Schedule>> schedules_by_user)
         where THistory : HolidayHistory
     {
+        List<HolidayAccount> accounts = holidays.Where(h => h.get__holiday_history() != null).ToList();
+        if (accounts.Count == 0)
+        {
+            return;
+        }
+
+        // all histories of these accounts with one query, grouped by account
+        List<Guid> account_ids = accounts.Select(a => a.id).ToList();
+        Dictionary<Guid, List<THistory>> histories_by_account = (await db.GetTable<THistory>()
+                .Where(h => account_ids.Contains(h.account_id))
+                .ToListAsync())
+            .GroupBy(h => h.account_id)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         List<THistory> holiday_histories = new List<THistory>();
-        foreach (var holiday in holidays)
+        foreach (var holiday in accounts)
         {
             THistory history = (THistory)holiday.get__holiday_history();
-
-            if (history == null)
-            {
-                continue;
-            }
-
-            // the schedule that applied in the accrued month (schedule history: a change later must not affect this month)
             List<Schedule> user_schedules = schedules_by_user.GetValueOrDefault(holiday.user_id, new List<Schedule>());
-            Schedule? schedule = Schedule.find_for_date(user_schedules, history.period_start);
-            if (schedule == null)
+
+            // exact (not rounded) hours of all earlier months of the account + this month
+            decimal exact_total = get_exact_accrual(holiday, history, user_schedules);
+            foreach (THistory earlier in histories_by_account.GetValueOrDefault(holiday.id, new List<THistory>()))
             {
-                // without a schedule the hours can not be calculated, accruing 0 would silently lose a month
-                throw new Exception($"User {holiday.user_id} has no working schedule on {history.period_start}, holidays can not be accrued");
+                if (earlier.period_start < history.period_start)
+                {
+                    exact_total += get_exact_accrual(holiday, earlier, user_schedules);
+                }
             }
 
-            // the rules that applied in the accrued month (a later change of the rules must not affect this month)
-            RuleSet rule_set = HolidayParameters.get_rule_set(history.period_start);
-            decimal month_rate = holiday.get_month_rate_hours(schedule, rule_set);
-
-            // +1 because both period_start and period_end are included (13..30 = 18 days)
-            int days = history.period_end.DayNumber - history.period_start.DayNumber + 1;
-            decimal day_rate = month_rate / DateTime.DaysInMonth(history.period_start.Year, history.period_start.Month);
-            history.accrued = Math.Round(days * day_rate, 2, MidpointRounding.AwayFromZero);
+            // get_earned() = what was accrued before this month (it is increased only after this method)
+            history.accrued = Math.Round(exact_total, 2, MidpointRounding.AwayFromZero) - holiday.get_earned();
             holiday_histories.Add(history);
         }
 
@@ -216,6 +231,27 @@ public class AccuralService
                select new { h, r })
             .Set(x => x.h.accrued, x => x.r.accrued)
             .UpdateAsync();
+    }
+
+    // exact (not rounded) hours one history period earns: the month rate with the schedule and the rules that applied
+    // in that month, for the days of the month the period covers (a mid-month start earns only the days worked)
+    private static decimal get_exact_accrual(HolidayAccount holiday, HolidayHistory history, List<Schedule> user_schedules)
+    {
+        // the schedule that applied in that month (schedule history: a change later must not affect this month)
+        Schedule? schedule = Schedule.find_for_date(user_schedules, history.period_start);
+        if (schedule == null)
+        {
+            // without a schedule the hours can not be calculated, accruing 0 would silently lose a month
+            throw new Exception($"User {holiday.user_id} has no working schedule on {history.period_start}, holidays can not be accrued");
+        }
+
+        // the rules that applied in that month (a later change of the rules must not affect this month)
+        RuleSet rule_set = HolidayParameters.get_rule_set(history.period_start);
+        decimal month_rate = holiday.get_month_rate_hours(schedule, rule_set);
+
+        // +1 because both period_start and period_end are included (13..30 = 18 days)
+        int days = history.period_end.DayNumber - history.period_start.DayNumber + 1;
+        return month_rate * days / DateTime.DaysInMonth(history.period_start.Year, history.period_start.Month);
     }
 
     // earning period is over when the last history month reached the end of the earning period
@@ -325,6 +361,18 @@ public class AccuralService
 
         // one batch insert for all first histories
         await db.GetTable<THistory>().BulkCopyAsync(first_histories);
+    }
+
+    // usable = false for every account whose usage period is over (law: 31 December, week 6: 30 April).
+    // the account itself and its balance are kept: what happens with the remaining hours (transfer by an approved
+    // transfer request, payout by payroll, holiday fund) is decided outside of this flag
+    // THoliday defines the table (LawHolidays -> law_holidays, AgreedHolidays -> agreed_holidays)
+    private async Task expire_accounts<THoliday>(DateOnly today) where THoliday : HolidayAccount
+    {
+        await db.GetTable<THoliday>()
+            .Where(h => h.usable && h.usage_period_end < today)
+            .Set(h => h.usable, false)
+            .UpdateAsync();
     }
 
     // all schedules of the users of the given accounts, grouped by user (one query for everybody)

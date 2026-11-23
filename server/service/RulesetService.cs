@@ -8,10 +8,12 @@ namespace service;
 public class RulesetService
 {
     private Database db;
+    private CurrentDateService currentDateService;
 
-    public RulesetService(Database db)
+    public RulesetService(Database db, CurrentDateService currentDateService)
     {
         this.db = db;
+        this.currentDateService = currentDateService;
     }
 
     // saves a new rule set. old rule sets are never changed or deleted (full history).
@@ -54,13 +56,7 @@ public class RulesetService
 
     private async Task<DateOnly> get_earliest_allowed_effective_from()
     {
-        DateOnly? last_law = await db.law_holidays_history.Select(h => (DateOnly?)h.period_start).MaxAsync();
-        DateOnly? last_agreed = await db.agreed_holidays_history.Select(h => (DateOnly?)h.period_start).MaxAsync();
-
-        // law and agreed histories always move together (same start date, accrued in the same transaction,
-        // week 6 disabled still creates histories with 0), so both dates are the same today.
-        // the agreed date is only a safety net in case the two chains ever differ. Max() skips null values
-        DateOnly? newest = new[] { last_law, last_agreed }.Max();
+        DateOnly? newest = await currentDateService.get_simulated_date();
         if (newest == null)
         {
             // nothing accrued yet, any date is allowed

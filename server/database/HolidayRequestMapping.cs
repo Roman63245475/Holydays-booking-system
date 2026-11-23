@@ -12,7 +12,7 @@ public class HolidayRequestMapping
         builder.Entity<HolidayRequest>().Property(x => x.user_id).HasColumnName("user_id").HasDbType("uuid").IsNullable(false);
         builder.Entity<HolidayRequest>().Property(x => x.StartDate).HasColumnName("StartDate").IsNullable(false);
         builder.Entity<HolidayRequest>().Property(x => x.EndDate).HasColumnName("EndDate").IsNullable(false);
-        builder.Entity<HolidayRequest>().Property(x =>x.Hours).HasColumnName("Hours").IsNullable(false);
+        builder.Entity<HolidayRequest>().Property(x => x.Hours).HasColumnName("Hours").HasDbType("numeric(10,2)").IsNullable(false);
         builder.Entity<HolidayRequest>().Property(x => x.RequestStatus).HasColumnName("status").IsNullable(false);
         builder.Entity<HolidayRequest>().Property(x => x.account_id).HasColumnName("account_id").IsNullable(false);
         builder.Entity<HolidayRequest>().Property(x => x.created_at).HasColumnName("created_at").IsNullable(false);

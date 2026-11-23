@@ -30,6 +30,11 @@ public sealed class AgreedHolidays: HolidayAccount
     {
         return this.earned_holiday_hours;
     }
+
+    public override decimal get_used()
+    {
+        return this.used_holiday_hours;
+    }
     
     public void set_agreed_holiday_history(AgreedHolidaysHistory lh)
     {

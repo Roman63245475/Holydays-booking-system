@@ -29,7 +29,7 @@ public class RequestController : ControllerBase
     }
 
     [HttpPost("request/create")]
-    public async Task<IActionResult> create([FromBody] RequestDTO requestDTO)
+    public async Task<ActionResult<HolidayRequest>> create([FromBody] RequestDTO requestDTO)
     {
         var userValue = HttpContext.Session.GetString("userId");
         if (!Guid.TryParse(userValue, out var userId))
@@ -41,8 +41,7 @@ public class RequestController : ControllerBase
 
         if (!DateOnly.TryParseExact(requestDTO.StartDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startDate)
             || !DateOnly.TryParseExact(requestDTO.EndDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var endDate)
-            || endDate < startDate
-            || requestDTO.Hours < 0)
+            || endDate < startDate)
         {
             return BadRequest("Invalid holiday request.");
         }
@@ -54,32 +53,43 @@ public class RequestController : ControllerBase
             StartDate = startDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             EndDate = endDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             created_at = DateTime.UtcNow,
-            Hours = requestDTO.Hours,
+            // the hours are calculated by the server from the schedule and days off (RequestService), not sent by the client
             RequestStatus = RequestStatus.Pending
         };
 
-        var createdRequest = await requestService.SendRequest(request);
-        return Ok(createdRequest);
+        try
+        {
+            var createdRequest = await requestService.SendRequest(request);
+            return Ok(createdRequest);
+        }
+        catch (InvalidOperationException e)
+        {
+            // the request breaks a holiday rule, the message tells the employee why
+            return BadRequest(e.Message);
+        }
     }
 
     [HttpGet("requests/getRequests")]
     public async Task<ActionResult<List<HolidayRequestUser>>> GetRequests() {
-        ValidateUser(Role.Accountant);
+        // ValidateUser does not throw, it returns the 401/403 response, which must be returned to stop the action
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
         var requests = await requestService.GetRequests();
         return Ok(requests);
     }
 
     [HttpPost("requests/declineRequest/{id}")]
     public async Task<IActionResult> DeclineRequest([FromRoute] Guid id) {
-        ValidateUser(Role.Accountant);
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
         await requestService.DeclineRequest(id);
         return Ok();
     }
 
     [HttpPost("requests/acceptRequest/{id}")]
     public async Task<IActionResult> AcceptRequest([FromRoute] Guid id) {
-        
-        ValidateUser(Role.Accountant);
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
         await requestService.AcceptRequest(id);
         return Ok();
     }

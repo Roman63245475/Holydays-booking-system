@@ -56,33 +56,57 @@ public class UserService
 
     public async Task<UserViewPage?> get_user(Guid userId)
     {
-        return await db.users
-            .Join(db.agreed_holidays,
-                u => u.id,
-                d => d.user_id,
-                (u, d) => new { User = u, Agreed = d })
-            .Join(db.law_holidays,
-                x => x.User.id,
-                l => l.user_id,
-                (x, l) => new { x.User, x.Agreed, Law = l })
-            .Where(x => x.User.id == userId && x.Agreed.active && x.Law.active)
-            .Select(x => new UserViewPage
+        User? user = await db.users.FirstOrDefaultAsync(u => u.id == userId);
+        if (user == null)
+        {
+            return null;
+        }
+
+        // all accounts that have not expired yet (usable), not only the ones that are still earning (active)
+        List<HolidayAccountView> law_accounts = await db.law_holidays
+            .Where(l => l.user_id == userId && l.usable)
+            .Select(l => new HolidayAccountView
             {
-                name = x.User.name,
-                email = x.User.email,
-                law_account_id = x.Law.id,
-                agreed_account_id = x.Agreed.id,
-                agreed_earned_holiday_hours = x.Agreed.earned_holiday_hours,
-                agreed_used_holiday_hours = x.Agreed.used_holiday_hours,
-                available_holiday_hours =
-                    x.Agreed.earned_holiday_hours - x.Agreed.used_holiday_hours,
-                agreed_earning_period_start = x.Agreed.earning_period_start,
-                law_earning_period_start = x.Law.earning_period_start,
-                law_earned_holiday_hours = x.Law.earned_holiday_hours,
-                law_used_holiday_hours = x.Law.used_holiday_hours,
-                law_available_holiday_hours = x.Law.earned_holiday_hours - x.Law.used_holiday_hours
+                id = l.id,
+                holiday_type = l.holiday_type,
+                active = l.active,
+                earning_period_start = l.earning_period_start,
+                earning_period_end = l.earning_period_end,
+                usage_period_start = l.usage_period_start,
+                usage_period_end = l.usage_period_end,
+                earned_holiday_hours = l.earned_holiday_hours,
+                used_holiday_hours = l.used_holiday_hours,
+                available_holiday_hours = l.earned_holiday_hours - l.used_holiday_hours
             })
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        List<HolidayAccountView> agreed_accounts = await db.agreed_holidays
+            .Where(a => a.user_id == userId && a.usable)
+            .Select(a => new HolidayAccountView
+            {
+                id = a.id,
+                holiday_type = a.holiday_type,
+                active = a.active,
+                earning_period_start = a.earning_period_start,
+                earning_period_end = a.earning_period_end,
+                usage_period_start = a.usage_period_start,
+                usage_period_end = a.usage_period_end,
+                earned_holiday_hours = a.earned_holiday_hours,
+                used_holiday_hours = a.used_holiday_hours,
+                available_holiday_hours = a.earned_holiday_hours - a.used_holiday_hours
+            })
+            .ToListAsync();
+
+        return new UserViewPage
+        {
+            name = user.name,
+            email = user.email,
+            // weeks 1-5 first, the account that expires first comes first (it should be used first)
+            accounts = law_accounts.Concat(agreed_accounts)
+                .OrderBy(a => a.holiday_type)
+                .ThenBy(a => a.usage_period_end)
+                .ToList()
+        };
     }
 
     public async Task<Guid?> get_accId(Guid userId, string kind)
