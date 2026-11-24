@@ -24,5 +24,7 @@ public class HolidayAccountView
     public DateOnly usage_period_end { get; set; }
     public decimal earned_holiday_hours { get; set; }
     public decimal used_holiday_hours { get; set; }
+    // + / - hours from working schedule changes (the balance is converted so the number of days stays the same)
+    public decimal converted_holiday_hours { get; set; }
     public decimal available_holiday_hours { get; set; }
 }

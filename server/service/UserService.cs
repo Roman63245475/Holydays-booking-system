@@ -47,6 +47,51 @@ public class UserService
         }
     }
 
+    // changes the user's data and, if it changed, their working schedule (a new schedule period from schedule_date).
+    // an empty password keeps the old one. throws KeyNotFoundException if the user does not exist and
+    // InvalidOperationException if the email belongs to another user
+    public async Task update_user(Guid id, string name, string email, string? password, Role role,
+        Schedule schedule, DateOnly schedule_date)
+    {
+        User? user = await db.users.FirstOrDefaultAsync(u => u.id == id);
+        if (user == null)
+        {
+            throw new KeyNotFoundException("User not found");
+        }
+
+        string trimmed_email = email.Trim();
+        if (await db.users.AnyAsync(u => u.email == trimmed_email && u.id != id))
+        {
+            throw new InvalidOperationException("Another user already has this email");
+        }
+
+        user.name = name.Trim();
+        user.email = trimmed_email;
+        user.role = role;
+        if (!string.IsNullOrEmpty(password))
+        {
+            user.password = new PasswordHasher<User>().HashPassword(user, password);
+        }
+
+        await using var transaction = await db.BeginTransactionAsync();
+        await db.UpdateAsync(user);
+        await scheduleService.change_schedule(id, schedule, schedule_date);
+        await transaction.CommitAsync();
+    }
+
+    // removes the user with everything that belongs to them: holiday requests, holiday accounts with their
+    // histories and schedules (accounts, histories and schedules are removed by ON DELETE CASCADE).
+    // returns false if the user does not exist
+    public async Task<bool> delete_user(Guid id)
+    {
+        await using var transaction = await db.BeginTransactionAsync();
+        // holiday_request.user_id has no ON DELETE CASCADE, so the requests are removed first
+        await db.HolidayRequest.Where(r => r.user_id == id).DeleteAsync();
+        int deleted = await db.users.Where(u => u.id == id).DeleteAsync();
+        await transaction.CommitAsync();
+        return deleted > 0;
+    }
+
     public async Task<List<ClientUser>> get_all_users()
     {
         List<ClientUser> users = await db.users.Select(u => new ClientUser
@@ -76,7 +121,8 @@ public class UserService
                 usage_period_end = l.usage_period_end,
                 earned_holiday_hours = l.earned_holiday_hours,
                 used_holiday_hours = l.used_holiday_hours,
-                available_holiday_hours = l.earned_holiday_hours - l.used_holiday_hours
+                converted_holiday_hours = l.converted_holiday_hours,
+                available_holiday_hours = l.earned_holiday_hours + l.converted_holiday_hours - l.used_holiday_hours
             })
             .ToListAsync();
 
@@ -93,7 +139,8 @@ public class UserService
                 usage_period_end = a.usage_period_end,
                 earned_holiday_hours = a.earned_holiday_hours,
                 used_holiday_hours = a.used_holiday_hours,
-                available_holiday_hours = a.earned_holiday_hours - a.used_holiday_hours
+                converted_holiday_hours = a.converted_holiday_hours,
+                available_holiday_hours = a.earned_holiday_hours + a.converted_holiday_hours - a.used_holiday_hours
             })
             .ToListAsync();
 

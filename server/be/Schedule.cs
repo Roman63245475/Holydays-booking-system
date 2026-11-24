@@ -50,6 +50,16 @@ public class Schedule
         return get_weekly_hours() / 5;
     }
 
+    // true if both schedules have the same working times on every weekday (id, user and effective_from are ignored)
+    public bool has_same_times(Schedule other)
+    {
+        return monday_start == other.monday_start && monday_end == other.monday_end
+            && tuesday_start == other.tuesday_start && tuesday_end == other.tuesday_end
+            && wednesday_start == other.wednesday_start && wednesday_end == other.wednesday_end
+            && thursday_start == other.thursday_start && thursday_end == other.thursday_end
+            && friday_start == other.friday_start && friday_end == other.friday_end;
+    }
+
     // the schedule that applies on the given date: the latest one with effective_from <= date, null if there is none
     public static Schedule? find_for_date(IEnumerable<Schedule> schedules, DateOnly date)
     {

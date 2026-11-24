@@ -28,6 +28,17 @@ public abstract class HolidayAccount
     // it does NOT mean "can be spent today": whether the holiday dates fit the account is checked with covers()
     public bool usable { get; set; } = true;
 
+    // correction of the balance from working schedule changes (positive or negative). when the schedule changes,
+    // the remaining balance is converted so the number of DAYS stays the same: hours * new day length / old day length.
+    // earned_holiday_hours is not changed for this, it must stay the exact sum of the monthly accruals
+    public decimal converted_holiday_hours { get; set; }
+
+    // hours that can still be spent: earned + schedule conversions - spent on approved holidays
+    public decimal get_available()
+    {
+        return get_earned() + converted_holiday_hours - get_used();
+    }
+
     // whether a holiday from start to end (both included) lies completely inside the usage period of this account
     public bool covers(DateOnly start, DateOnly end)
     {

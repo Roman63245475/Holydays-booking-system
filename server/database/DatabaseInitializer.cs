@@ -101,6 +101,13 @@ public class DatabaseInitializer
         db.Execute(
             "ALTER TABLE agreed_holidays ADD COLUMN IF NOT EXISTS usable boolean NOT NULL DEFAULT true"
         );
+        // converted_holiday_hours = balance correction from working schedule changes (see HolidayAccount)
+        db.Execute(
+            "ALTER TABLE law_holidays ADD COLUMN IF NOT EXISTS converted_holiday_hours numeric NOT NULL DEFAULT 0"
+        );
+        db.Execute(
+            "ALTER TABLE agreed_holidays ADD COLUMN IF NOT EXISTS converted_holiday_hours numeric NOT NULL DEFAULT 0"
+        );
 
         // law_holidays_history
         db.CreateTable<LawHolidaysHistory>(

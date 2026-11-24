@@ -4,6 +4,7 @@ import {CreateUser} from "@/dialog/CreateUser.tsx";
 import {userApi} from "../../api/client.ts"
 import {useEffect} from "react";
 import {Role, type ClientUser} from "../../api/Api.ts";
+import {errorText} from "@/api/errors.ts";
 import {RescheduleMenu} from "@/dialog/RescheduleMenu.tsx";
 import {IllnessMenu} from "@/dialog/IllnessMenu.tsx";
 import {DesConfirmation} from "@/dialog/DesConfirmation.tsx";
@@ -32,7 +33,7 @@ function UsersTab(){
             case 'edit':
                 return <CreateUser setMenuOpen={setActiveMenu} submitted={loadUsers} user={selectedUser} setUser={setSelectedUser}/>
             case 'delete':
-                return <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to delete " + selectedUser?.name} onConfirm={deleteUser}/>
+                return <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to delete " + selectedUser?.name + "? All their holiday accounts, history and requests will be removed."} onConfirm={deleteUser}/>
             default:
                 return null
         }
@@ -44,7 +45,15 @@ function UsersTab(){
     }
 
     async function deleteUser(){
-
+        if (!selectedUser?.id) return;
+        try {
+            await userApi.delete_user(selectedUser.id);
+        } catch (err) {
+            // e.g. "You can not delete yourself"
+            window.alert(errorText(err, "Could not delete the user"));
+        }
+        setSelectedUser(null);
+        await loadUsers();
     }
 
     return(

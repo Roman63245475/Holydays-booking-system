@@ -63,6 +63,19 @@ public class ScheduleDTO
         return null;
     }
 
+    // the current schedule of a user in the same shape the create / edit form uses
+    public static ScheduleDTO from_schedule(be.Schedule s)
+    {
+        return new ScheduleDTO
+        {
+            monday_start = s.monday_start, monday_end = s.monday_end,
+            tuesday_start = s.tuesday_start, tuesday_end = s.tuesday_end,
+            wednesday_start = s.wednesday_start, wednesday_end = s.wednesday_end,
+            thursday_start = s.thursday_start, thursday_end = s.thursday_end,
+            friday_start = s.friday_start, friday_end = s.friday_end
+        };
+    }
+
     public be.Schedule to_schedule()
     {
         return new be.Schedule

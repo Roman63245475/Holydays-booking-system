@@ -48,6 +48,10 @@ export function HolidayBalance({account, onSelect}: HolidayBalanceProps) {
             <div className="holiday-balance-details">
                 <p><span>Can be used</span><strong>{formatDate(account.usage_period_start)} – {formatDate(account.usage_period_end)}</strong></p>
                 <p><span>Earned</span><strong>{account.earned_holiday_hours ?? "—"} hours</strong></p>
+                {/* balance conversion after working schedule changes (same number of days, new day length) */}
+                {!!account.converted_holiday_hours && (
+                    <p><span>Schedule change</span><strong>{account.converted_holiday_hours > 0 ? "+" : ""}{account.converted_holiday_hours} hours</strong></p>
+                )}
                 <p><span>Used</span><strong>{account.used_holiday_hours ?? "—"} hours</strong></p>
             </div>
             <button

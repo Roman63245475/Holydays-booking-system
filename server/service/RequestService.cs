@@ -122,7 +122,7 @@ public class RequestService
             .Where(r => r.account_id == account.id && r.RequestStatus == RequestStatus.Pending)
             .SumAsync(r => (decimal?)r.Hours) ?? 0;
 
-        decimal available = account.get_earned() - account.get_used() - reserved;
+        decimal available = account.get_available() - reserved;
 
         decimal allowed_debt = 0;
         if (account.holiday_type == HolidayType.FerieEfterFerieloven && account.active)
