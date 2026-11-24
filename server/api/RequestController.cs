@@ -69,6 +69,16 @@ public class RequestController : ControllerBase
         }
     }
 
+    [HttpGet("request/ongoing")]
+    public async Task<ActionResult<List<OngoingHolidayRequest>>> GetOngoingRequests()
+    {
+        var userValue = HttpContext.Session.GetString("userId");
+        if (!Guid.TryParse(userValue, out var userId))
+            return Unauthorized("Not logged in");
+
+        return Ok(await requestService.GetOngoingRequests(userId));
+    }
+
     [HttpGet("requests/getRequests")]
     public async Task<ActionResult<List<HolidayRequestUser>>> GetRequests() {
         // ValidateUser does not throw, it returns the 401/403 response, which must be returned to stop the action

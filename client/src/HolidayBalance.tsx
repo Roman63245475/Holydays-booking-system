@@ -1,4 +1,11 @@
-import {HolidayType, type HolidayAccountView} from "./api/Api";
+import type {HolidayAccountView} from "./api/Api";
+
+// Keep these values in sync with server/be/HolidayType.cs. The generated API
+// client currently exposes TypeOfHolidayDay (for days off), not HolidayType.
+const HolidayType = {
+    FerieEfterFerieloven: 1,
+    FerieUge: 2,
+} as const;
 
 interface HolidayBalanceProps {
     account: HolidayAccountView;

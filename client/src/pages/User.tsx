@@ -5,6 +5,7 @@ import type { HolidayAccountView, UserViewPage } from "../api/Api";
 import storage from "../storage";
 import { DateTimeRangePicker } from "../DateTimeRangePicker";
 import { accountTitle, HolidayBalance } from "../HolidayBalance";
+import { OnGoingRequest } from "../OnGoingRequest";
 
 export function User() {
     const [user, setUser] = useState<UserViewPage | null>(null);
@@ -37,6 +38,7 @@ export function User() {
 
                 <div className="flex center-v">
                     <button onClick={() => setActiveTab("home")}>Home</button>
+                    <button onClick={() => setActiveTab("onGoing")}>Ongoing Requests</button>
                     <button onClick={() => setActiveTab("history")}>Holiday History</button>
                 </div>
 
@@ -59,6 +61,8 @@ export function User() {
                             ))}
                         </div>
                     </>
+                ) : activeTab === "onGoing" ? (
+                    <OnGoingRequest />
                 ) : activeTab === "history" ? (
                     <h2>Your holidays in the past</h2>
                 ) : activeTab === "request" ? (
