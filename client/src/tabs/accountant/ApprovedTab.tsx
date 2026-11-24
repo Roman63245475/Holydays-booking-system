@@ -15,10 +15,14 @@ export function ApprovedTab(){
             case 'illness':
                 return <IllnessMenu setMenuOpen={setActiveMenu} />
             case 'destruct':
-                return <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to cancel this user's holiday?"}/>
+                return <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to cancel this user's holiday?"} onConfirm={cancelApproved}/>
             default:
                 return null
         }
+    }
+
+    async function cancelApproved(){
+
     }
 
     return(
@@ -41,7 +45,7 @@ export function ApprovedTab(){
                     </div>
                     <div className={"flex center-v g-10"}>
                         <button onClick={() => setActiveMenu('reschedule')} className={"w-100 btn-warning"}>Reschedule</button>
-                        <button onClick={() => setActiveMenu('illness')} className={"w-100 btn-info"}>Register Illness</button>
+                        {/*<button onClick={() => setActiveMenu('illness')} className={"w-100 btn-info"}>Register Illness</button>*/}
                         <button onClick={() => setActiveMenu('destruct')} className={"w-100 btn-destructive-outline"}>Cancel Holiday</button>
                     </div>
                 </div>
