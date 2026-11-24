@@ -231,6 +231,15 @@ td{
   background: rgb(239 68 68 / 0.26);
 }
 
+.ongoing-requests__action-button--reschedule {
+  background: rgb(245 158 11 / 0.14);
+  border-color: rgb(251 191 36 / 0.28);
+}
+
+.ongoing-requests__action-button--reschedule:hover {
+  background: rgb(245 158 11 / 0.28);
+}
+
 .ongoing-requests__message {
   margin: 0;
   padding: 1.25rem;

@@ -1,6 +1,7 @@
 
 import {useState} from "react";
 import {requestApi} from "./api/client";
+import {errorText} from "./api/errors";
 
 export interface DateTimeRange {
     startDate: string;
@@ -46,7 +47,7 @@ export function DateTimeRangePicker({ accountId, onChange }: Props) {
             window.alert(`Your holiday request was submitted (${created.hours?.toFixed(2)} hours).`);
         } catch (error) {
             // the backend returns the reason (e.g. "Not enough holiday: the request costs 37.00 h, ...")
-            window.alert(error instanceof Error ? error.message : "Could not submit your request.");
+            window.alert(errorText(error, "Could not submit your request."));
         }
     }
     return (

@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {DesConfirmation} from "@/dialog/DesConfirmation.tsx";
 import {requestApi} from "@/api/client.ts";
+import {errorText} from "@/api/errors.ts";
 import {type HolidayRequestUser, HolidayType, RequestStatus} from "@/api/Api.ts";
 
 export function RequestsTab(){
@@ -30,19 +31,21 @@ export function RequestsTab(){
         if (!selectedRequestId) return;
         try {
             await requestApi.declineRequest(selectedRequestId)
-            await getRequests();
         } catch (err) {
-            console.log(err)
+            // e.g. 409: the request was already handled (by another tab or accountant)
+            console.log(errorText(err, "Could not decline the request."))
         }
+        // reload in both cases, so a request that is not pending anymore disappears from the list
+        await getRequests();
     }
 
     async function acceptRequest(id : string) {
         try{
             await requestApi.acceptRequest(id)
-            await getRequests();
         }catch(err){
-            console.log(err)
+            console.log(errorText(err, "Could not approve the request."))
         }
+        await getRequests();
     }
 
     return(

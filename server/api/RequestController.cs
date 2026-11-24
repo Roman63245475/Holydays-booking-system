@@ -92,7 +92,8 @@ public class RequestController : ControllerBase
     public async Task<IActionResult> DeclineRequest([FromRoute] Guid id) {
         var error = ValidateUser(Role.Accountant);
         if (error != null) return error;
-        await requestService.DeclineRequest(id);
+        if (!await requestService.DeclineRequest(id))
+            return Conflict("Only a pending request can be declined. This request does not exist or was already handled.");
         return Ok();
     }
 
@@ -100,7 +101,8 @@ public class RequestController : ControllerBase
     public async Task<IActionResult> AcceptRequest([FromRoute] Guid id) {
         var error = ValidateUser(Role.Accountant);
         if (error != null) return error;
-        await requestService.AcceptRequest(id);
+        if (!await requestService.AcceptRequest(id))
+            return Conflict("Only a pending request can be approved. This request does not exist or was already handled.");
         return Ok();
     }
 }

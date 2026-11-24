@@ -33,4 +33,34 @@ public class CurrentDateService
     {
         return await get_simulated_date() ?? DateOnly.FromDateTime(DateTime.Now);
     }
+
+    // start date of a new user. their first history must lie in the same open (not yet accrued) month as everybody
+    // else's, otherwise next_month moves them one month at a time from a different month and they never catch up.
+    // so the real date is used, but kept inside the open month:
+    //   - real date inside the open month (no simulation)           -> the real date (exact day)
+    //   - simulation is ahead (open month after the real date)      -> 1st of the open month (the simulated "today")
+    //   - accrual is behind (real date after the open month)        -> last day of the open month
+    //   - no histories yet (first user)                             -> the real date
+    public async Task<DateOnly> get_new_user_start_date()
+    {
+        DateOnly today = DateOnly.FromDateTime(DateTime.Now);
+        DateOnly? simulated = await get_simulated_date();
+        if (simulated == null)
+        {
+            return today;
+        }
+
+        DateOnly open_month_start = new DateOnly(simulated.Value.Year, simulated.Value.Month, 1);
+        DateOnly open_month_end = open_month_start.AddMonths(1).AddDays(-1);
+
+        if (today < open_month_start)
+        {
+            return open_month_start;
+        }
+        if (today > open_month_end)
+        {
+            return open_month_end;
+        }
+        return today;
+    }
 }

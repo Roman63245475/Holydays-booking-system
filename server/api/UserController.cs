@@ -9,10 +9,12 @@ public class UserController: ControllerBase
 {
     
     private UserService userService;
+    private CurrentDateService currentDateService;
 
-    public UserController(UserService userService)
+    public UserController(UserService userService, CurrentDateService currentDateService)
     {
         this.userService = userService;
+        this.currentDateService = currentDateService;
     }
 
     [HttpPost(nameof(create))]
@@ -41,8 +43,9 @@ public class UserController: ControllerBase
 
         Schedule schedule = userDTO.schedule.to_schedule();
 
-        DateOnly today = DateOnly.FromDateTime(DateTime.Now);
-        User user = new User(userDTO.name, userDTO.email, userDTO.password, userDTO.role, today);
+        // not DateTime.Now: with the time simulator ahead, the user must start in the same open month as everybody else
+        DateOnly start_date = await currentDateService.get_new_user_start_date();
+        User user = new User(userDTO.name, userDTO.email, userDTO.password, userDTO.role, start_date);
         try
         {
             await userService.create_user(user, schedule);

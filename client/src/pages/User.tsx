@@ -9,7 +9,7 @@ import { OnGoingRequest } from "../OnGoingRequest";
 
 export function User() {
     const [user, setUser] = useState<UserViewPage | null>(null);
-    const [activeTab, setActiveTab] = useState<"home" | "history" | "request">("home");
+    const [activeTab, setActiveTab] = useState<"home" | "onGoing" | "history" | "request">("home");
     const [selectedAccount, setSelectedAccount] = useState<HolidayAccountView | null>(null);
     const navigate = useNavigate();
 

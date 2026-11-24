@@ -1,24 +1,26 @@
 import { useEffect, useState } from "react";
-import { requestApi, type HolidayRequest } from "./api/client";
+import { requestApi } from "./api/client";
+import type { OngoingHolidayRequest } from "./api/Api";
+import { errorText } from "./api/errors";
 
 export function OnGoingRequest() {
-    const [requests, setRequests] = useState<HolidayRequest[]>([]);
+    const [requests, setRequests] = useState<OngoingHolidayRequest[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let cancelled = false;
 
-        requestApi.getOngoing()
+        requestApi.getOngoingRequests()
             .then((result) => {
                 if (!cancelled) {
-                    setRequests(result);
+                    setRequests(result ?? []);
                     setLoading(false);
                 }
             })
             .catch((reason: unknown) => {
                 if (!cancelled) {
-                    setError(reason instanceof Error ? reason.message : "Could not load your requests.");
+                    setError(errorText(reason, "Could not load your requests."));
                     setLoading(false);
                 }
             });
@@ -75,6 +77,7 @@ export function OnGoingRequest() {
                                         <div className="ongoing-requests__actions">
                                             <button className="ongoing-requests__action-button ongoing-requests__action-button--edit" type="button">Edit</button>
                                             <button className="ongoing-requests__action-button ongoing-requests__action-button--cancel" type="button">Cancel</button>
+                                            <button className="ongoing-requests__action-button ongoing-requests__action-button--reschedule" type="button">Reschedule</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -87,7 +90,8 @@ export function OnGoingRequest() {
     );
 }
 
-function formatCreatedAt(value: string): string {
+// typed as Date by the generated client, but JSON gives a string at runtime
+function formatCreatedAt(value: Date | string): string {
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 }

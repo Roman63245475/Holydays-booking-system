@@ -189,17 +189,31 @@ public class RequestService
         return lawRequests.Concat(agreedRequests).OrderByDescending(r => r.CreatedAt).ToList();
     }
 
-    public async Task DeclineRequest(Guid id) {
-        await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Rejected).UpdateAsync();
+    // only a PENDING request can be declined. an accepted request has already added its hours to used_holiday_hours,
+    // declining it here would leave those hours spent (cancelling approved holiday needs its own cancellation request).
+    // returns false if the request does not exist or is not pending anymore
+    public async Task<bool> DeclineRequest(Guid id) {
+        int updated = await db.HolidayRequest
+            .Where(r => r.id == id && r.RequestStatus == RequestStatus.Pending)
+            .Set(r => r.RequestStatus, RequestStatus.Rejected)
+            .UpdateAsync();
+        return updated > 0;
     }
 
-    public async Task AcceptRequest(Guid id) {
+    // returns false if the request does not exist or is not pending anymore
+    public async Task<bool> AcceptRequest(Guid id) {
         await using var transaction = await db.BeginTransactionAsync();
         var request = await db.HolidayRequest.FirstOrDefaultAsync(r => r.id == id && r.RequestStatus == RequestStatus.Pending);
-        
-        if (request == null) return;
-        
-        await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Accepted).UpdateAsync();
+
+        if (request == null) return false;
+
+        // the status condition is repeated in the UPDATE: if another accept/decline changed the request after it was
+        // read above, nothing is updated and the hours are not added a second time
+        int updated = await db.HolidayRequest
+            .Where(r => r.id == id && r.RequestStatus == RequestStatus.Pending)
+            .Set(r => r.RequestStatus, RequestStatus.Accepted)
+            .UpdateAsync();
+        if (updated == 0) return false;
 
         var updateLaw = await db.law_holidays.Where(l => l.id == request.account_id)
             .Set(l => l.used_holiday_hours, l => l.used_holiday_hours + request.Hours).UpdateAsync();
@@ -210,6 +224,7 @@ public class RequestService
         }
         
         await transaction.CommitAsync();
+        return true;
     }
 
     // public async Task<RequestDTO[]> GetOngoingRequests(Guid userId)
