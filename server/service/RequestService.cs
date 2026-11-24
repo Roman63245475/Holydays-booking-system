@@ -168,6 +168,27 @@ public class RequestService
             ).ToListAsync();
     }
 
+    public async Task<List<OngoingHolidayRequest>> GetOngoingRequests(Guid userId)
+    {
+        var lawRequests = await db.HolidayRequest
+            .Where(r => r.user_id == userId && r.RequestStatus == RequestStatus.Pending)
+            .Join(db.law_holidays, r => r.account_id, a => a.id, (r, a) => new OngoingHolidayRequest
+            {
+                Id = r.id, StartDate = r.StartDate, EndDate = r.EndDate, Hours = r.Hours,
+                CreatedAt = r.created_at, HolidayKind = "law", RequestStatus = r.RequestStatus
+            }).ToListAsync();
+
+        var agreedRequests = await db.HolidayRequest
+            .Where(r => r.user_id == userId && r.RequestStatus == RequestStatus.Pending)
+            .Join(db.agreed_holidays, r => r.account_id, a => a.id, (r, a) => new OngoingHolidayRequest
+            {
+                Id = r.id, StartDate = r.StartDate, EndDate = r.EndDate, Hours = r.Hours,
+                CreatedAt = r.created_at, HolidayKind = "agreed", RequestStatus = r.RequestStatus
+            }).ToListAsync();
+
+        return lawRequests.Concat(agreedRequests).OrderByDescending(r => r.CreatedAt).ToList();
+    }
+
     public async Task DeclineRequest(Guid id) {
         await db.HolidayRequest.Where(r => r.id == id).Set(r => r.RequestStatus, RequestStatus.Rejected).UpdateAsync();
     }
