@@ -16,8 +16,7 @@ export const dayOffApi = new DayOffClient(baseUrl, http);
 export interface CreateRequestDTO {
   startDate: string;
   endDate: string;
-  hours: number;
-  holidayKind: "law" | "agreed";
+  account_id: string;
 }
 
 export interface HolidayRequest {
@@ -31,7 +30,7 @@ export interface HolidayRequest {
 }
 
 export const requestApi = {
-  async create(request: CreateRequestDTO): Promise<void> {
+  async create(request: CreateRequestDTO): Promise<HolidayRequest> {
     const response = await http.fetch(`${baseUrl}/request/create`, {
       method: "POST",
       headers: {
@@ -44,6 +43,7 @@ export const requestApi = {
     if (!response.ok) {
       throw new Error(`Request submission failed (${response.status}): ${await response.text()}`);
     }
+    return await response.json() as HolidayRequest;
   },
 
   async getOngoing(): Promise<HolidayRequest[]> {
