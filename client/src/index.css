@@ -54,6 +54,18 @@ input:focus{
   outline: none;
 }
 
+textarea{
+  width: 100%;
+  max-width: 400px;
+  padding: 16px;
+  background-color: rgb(147 176 225 / 0.03);
+  border: 2px solid rgb(8 8 18 / 0.5);
+}
+
+textarea:focus{
+  outline: none;
+}
+
 select{
   padding: 8px 16px;
   border: none;
@@ -301,6 +313,10 @@ td{
 
 .g-6{
   gap: 6px;
+}
+
+.min-w-500{
+  min-width: 500px;
 }
 
 .w-100{
