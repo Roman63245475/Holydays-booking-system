@@ -752,8 +752,48 @@ export class RequestClient {
         return Promise.resolve<EmployerCancelResult>(null as any);
     }
 
-    getCancelledByEmployer(): Promise<CancelledHolidayView[]> {
-        let url_ = this.baseUrl + "/request/cancelledByEmployer";
+    employerReschedule(id: string, dto: EmployerRescheduleDTO): Promise<HolidayRequest> {
+        let url_ = this.baseUrl + "/requests/employerReschedule/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(dto);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEmployerReschedule(_response);
+        });
+    }
+
+    protected processEmployerReschedule(response: Response): Promise<HolidayRequest> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as HolidayRequest;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<HolidayRequest>(null as any);
+    }
+
+    getChangedByEmployer(): Promise<CancelledHolidayView[]> {
+        let url_ = this.baseUrl + "/request/changedByEmployer";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_: RequestInit = {
@@ -764,11 +804,11 @@ export class RequestClient {
         };
 
         return this.http.fetch(url_, options_).then((_response: Response) => {
-            return this.processGetCancelledByEmployer(_response);
+            return this.processGetChangedByEmployer(_response);
         });
     }
 
-    protected processGetCancelledByEmployer(response: Response): Promise<CancelledHolidayView[]> {
+    protected processGetChangedByEmployer(response: Response): Promise<CancelledHolidayView[]> {
         const status = response.status;
         let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
         if (status === 200) {
@@ -1320,6 +1360,13 @@ export interface EmployerCancelDTO {
     confirmed?: boolean;
 }
 
+export interface EmployerRescheduleDTO {
+    startDate?: string;
+    endDate?: string;
+    reason?: string | undefined;
+    confirmed?: boolean;
+}
+
 export interface CancelledHolidayView {
     id?: string;
     startDate?: string;
@@ -1328,6 +1375,9 @@ export interface CancelledHolidayView {
     holidayKind?: string;
     reason?: string | undefined;
     cancelledAt?: Date;
+    movedToStartDate?: string | undefined;
+    movedToEndDate?: string | undefined;
+    movedToHours?: number | undefined;
 }
 
 export interface RuleSetDTO {

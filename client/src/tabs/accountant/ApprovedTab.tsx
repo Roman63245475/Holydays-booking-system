@@ -1,19 +1,19 @@
 import {useEffect, useState} from "react";
-import {RescheduleMenu} from "@/dialog/RescheduleMenu.tsx";
+import {EmployerRescheduleDialog} from "@/dialog/EmployerRescheduleDialog.tsx";
 import {EmployerCancelDialog} from "@/dialog/EmployerCancelDialog.tsx";
 import {requestApi} from "@/api/client.ts";
 import {errorText} from "@/api/errors.ts";
 import {type ApprovedHolidayView, HolidayType} from "@/api/Api.ts";
 
 // approved holidays of all employees that are not over yet, of the chosen account type.
-// the accountant can cancel one that has not started (employer's decision, or approving the employee's request).
-// Reschedule is still a placeholder
+// the accountant can cancel one that has not started (employer's decision, or approving the employee's request)
+// or move it to new dates (employer's decision; not while the employee asks to cancel it)
 export function ApprovedTab(){
 
     const [week6Active, setWeek6Active] = useState(false)
     const [holidays, setHolidays] = useState<ApprovedHolidayView[]>([])
     const [cancelling, setCancelling] = useState<ApprovedHolidayView | null>(null)
-    const [rescheduleOpen, setRescheduleOpen] = useState<string | null>(null)
+    const [rescheduling, setRescheduling] = useState<ApprovedHolidayView | null>(null)
     const [message, setMessage] = useState<{ text: string, error: boolean } | null>(null)
 
     const targetKind = week6Active ? HolidayType.FerieUge : HolidayType.FerieEfterFerieloven;
@@ -31,15 +31,15 @@ export function ApprovedTab(){
         }
     }
 
-    async function cancelled(text: string) {
+    async function changed(text: string) {
         setMessage({text, error: false})
         await load()
     }
 
     return(
         <div className={"flex center-v p-16"}>
-            {cancelling && <EmployerCancelDialog holiday={cancelling} onClose={() => setCancelling(null)} onDone={cancelled}/>}
-            {rescheduleOpen && <RescheduleMenu setMenuOpen={setRescheduleOpen}/>}
+            {cancelling && <EmployerCancelDialog holiday={cancelling} onClose={() => setCancelling(null)} onDone={changed}/>}
+            {rescheduling && <EmployerRescheduleDialog holiday={rescheduling} onClose={() => setRescheduling(null)} onDone={changed}/>}
             <h1>Approved Holidays for {week6Active ? 'Week 6' : 'Week 1-5'}</h1>
             <div className={"flex table-border table-tools"}>
                 <button onClick={() => setWeek6Active(true)}>Week 6</button>
@@ -66,7 +66,12 @@ export function ApprovedTab(){
                                 )}
                             </div>
                             <div className={"flex center-v g-10"}>
-                                <button onClick={() => setRescheduleOpen('reschedule')} className={"w-100 btn-warning"}>Reschedule</button>
+                                <button onClick={() => setRescheduling(h)} className={"w-100 btn-warning"}
+                                        disabled={h.started || h.hasPendingCancellation}
+                                        title={h.started ? "A holiday that has started can not be moved"
+                                            : h.hasPendingCancellation ? "The employee asked to cancel it: answer their request first" : undefined}>
+                                    Reschedule
+                                </button>
                                 <button onClick={() => setCancelling(h)} className={"w-100 btn-destructive-outline"}
                                         disabled={h.started}
                                         title={h.started ? "A holiday that has started can not be cancelled" : undefined}>

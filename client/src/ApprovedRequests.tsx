@@ -7,7 +7,7 @@ import { formatHours, holidayKindLabel } from "./requestFormat";
 
 // approved holidays of the employee that are not over yet. an approved holiday can only be cancelled by a
 // cancellation request to the accountant, and only before it starts.
-// below: planned holidays the accountant cancelled on the employer's decision, with the reason
+// below: planned holidays the accountant cancelled or moved on the employer's decision, with the reason
 export function ApprovedRequests() {
     const [requests, setRequests] = useState<OngoingHolidayRequest[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export function ApprovedRequests() {
         try {
             const [approved, cancelled] = await Promise.all([
                 requestApi.getApprovedRequests(),
-                requestApi.getCancelledByEmployer()
+                requestApi.getChangedByEmployer()
             ]);
             setRequests(approved ?? []);
             setCancelledByEmployer(cancelled ?? []);
@@ -108,12 +108,22 @@ export function ApprovedRequests() {
 
             {cancelledByEmployer.length > 0 && (
                 <div className="cancelled-by-employer">
-                    <h3>Cancelled by the accountant</h3>
-                    <p className="ongoing-requests__subtitle">These approved holidays were cancelled by the company. The hours were returned to your balance.</p>
+                    <h3>Changed by the accountant</h3>
+                    <p className="ongoing-requests__subtitle">These approved holidays were cancelled or moved by the company. The hours of a cancelled holiday were returned to your balance.</p>
                     <ul>
                         {cancelledByEmployer.map(c => (
                             <li key={c.id}>
-                                <strong>{c.startDate} to {c.endDate}</strong> ({holidayKindLabel({ holidayKind: c.holidayKind })}, {formatHours(c.hours)})
+                                {c.movedToStartDate ? (
+                                    <>
+                                        Moved: <strong>{c.startDate} to {c.endDate}</strong> → <strong>{c.movedToStartDate} to {c.movedToEndDate}</strong>
+                                        {" "}({holidayKindLabel({ holidayKind: c.holidayKind })}, {formatHours(c.movedToHours)})
+                                    </>
+                                ) : (
+                                    <>
+                                        Cancelled: <strong>{c.startDate} to {c.endDate}</strong>
+                                        {" "}({holidayKindLabel({ holidayKind: c.holidayKind })}, {formatHours(c.hours)})
+                                    </>
+                                )}
                                 <span className="request-reason"> Reason: {c.reason}</span>
                             </li>
                         ))}

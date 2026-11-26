@@ -12,6 +12,8 @@ export function User() {
     const [user, setUser] = useState<UserViewPage | null>(null);
     const [activeTab, setActiveTab] = useState<"home" | "onGoing" | "approved" | "history" | "request">("home");
     const [selectedAccount, setSelectedAccount] = useState<HolidayAccountView | null>(null);
+    // changes on every menu click: the tab is mounted again and reloads its data, also when it is already open
+    const [reloadKey, setReloadKey] = useState(0);
     const navigate = useNavigate();
 
     // reloaded every time Home is opened: balances and the main holiday notice change when requests are
@@ -21,7 +23,12 @@ export function User() {
         userApi.me()
             .then(setUser)
             .catch(() => navigate("/"));
-    }, [navigate, activeTab]);
+    }, [navigate, activeTab, reloadKey]);
+
+    function openTab(tab: "home" | "onGoing" | "approved" | "history") {
+        setActiveTab(tab);
+        setReloadKey((k) => k + 1);
+    }
 
     async function logOut() {
         await loginApi.logout();
@@ -41,16 +48,16 @@ export function User() {
                 <h1>Welcome</h1>
 
                 <div className="flex center-v">
-                    <button onClick={() => setActiveTab("home")}>Home</button>
-                    <button onClick={() => setActiveTab("onGoing")}>Ongoing Requests</button>
-                    <button onClick={() => setActiveTab("approved")}>Approved Holidays</button>
-                    <button onClick={() => setActiveTab("history")}>Holiday History</button>
+                    <button onClick={() => openTab("home")}>Home</button>
+                    <button onClick={() => openTab("onGoing")}>Ongoing Requests</button>
+                    <button onClick={() => openTab("approved")}>Approved Holidays</button>
+                    <button onClick={() => openTab("history")}>Holiday History</button>
                 </div>
 
                 <button className="g-6" onClick={logOut}>Log Out</button>
             </aside>
 
-            <main className="w-100 p-16">
+            <main className="w-100 p-16" key={reloadKey}>
                 {activeTab === "home" ? (
                     <>
                         <h1>Good Morning, {user?.name}</h1>

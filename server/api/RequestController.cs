@@ -282,12 +282,51 @@ public class RequestController : ControllerBase
         }
     }
 
-    // holidays of the logged in user that the accountant cancelled on the employer's decision
-    [HttpGet("request/cancelledByEmployer")]
-    public async Task<ActionResult<List<CancelledHolidayView>>> GetCancelledByEmployer()
+    // the accountant moves an approved holiday to new dates on the employer's decision. returns the new holiday
+    [HttpPost("requests/employerReschedule/{id}")]
+    public async Task<ActionResult<HolidayRequest>> EmployerReschedule([FromRoute] Guid id, [FromBody] EmployerRescheduleDTO dto)
+    {
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
+        if (dto.Reason != null && dto.Reason.Length > 500)
+        {
+            return BadRequest("The reason can be at most 500 characters long.");
+        }
+        if (!TryParseDates(dto.StartDate, dto.EndDate, out DateOnly start, out DateOnly end))
+        {
+            return BadRequest("Invalid holiday dates.");
+        }
+        TryGetUserId(out Guid accountantId);
+
+        try
+        {
+            return Ok(await requestService.EmployerReschedule(id, accountantId, start, end, dto.Reason, dto.Confirmed));
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
+        catch (RequestStateException e)
+        {
+            return Conflict(e.Message);
+        }
+        catch (InvalidOperationException e)
+        {
+            // the new dates break a holiday rule, nothing was changed
+            return BadRequest(e.Message);
+        }
+    }
+
+    // holidays of the logged in user that the accountant cancelled or moved on the employer's decision
+    [HttpGet("request/changedByEmployer")]
+    public async Task<ActionResult<List<CancelledHolidayView>>> GetChangedByEmployer()
     {
         if (!TryGetUserId(out Guid userId)) return Unauthorized("Not logged in");
-        return Ok(await requestService.GetCancelledByEmployer(userId));
+        return Ok(await requestService.GetChangedByEmployer(userId));
     }
 
     private bool TryGetUserId(out Guid userId)

@@ -17,6 +17,14 @@ export function Accountant(){
 
     const [name, setName] = useState("");
     const [activeTab, setActiveTab] = useState('requests')
+    // changes on every menu click: the tab is mounted again and reloads its data, also when it is already open
+    // (otherwise new requests only appear after switching to another tab and back)
+    const [reloadKey, setReloadKey] = useState(0)
+
+    function openTab(tab: string) {
+        setActiveTab(tab)
+        setReloadKey(k => k + 1)
+    }
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -60,17 +68,17 @@ export function Accountant(){
                 <h1>Accountant Page</h1>
                 <p>Welcome {name}</p>
                 <div className={"flex center-v"}>
-                    <button onClick={() => setActiveTab('requests')}>Pending Requests <span className={"icon pending-icon"} /></button>
-                    <button onClick={() => setActiveTab('cancellations')}>Cancellation Requests <span className={"icon pending-icon"} /></button>
-                    <button onClick={() => setActiveTab('approved')}>Approved Holidays <span className={"icon approved-icon"} /></button>
-                    <button onClick={() => setActiveTab('balances')}>Employee Balances <span className={"icon balance-icon"} /></button>
+                    <button onClick={() => openTab('requests')}>Pending Requests <span className={"icon pending-icon"} /></button>
+                    <button onClick={() => openTab('cancellations')}>Cancellation Requests <span className={"icon pending-icon"} /></button>
+                    <button onClick={() => openTab('approved')}>Approved Holidays <span className={"icon approved-icon"} /></button>
+                    <button onClick={() => openTab('balances')}>Employee Balances <span className={"icon balance-icon"} /></button>
                 </div>
                 <button className={"g-6"} onClick={logOut}>Log Out <span className={"icon log-out-icon"} /></button>
             </aside>
             <div className={"w-100"}>
-                {
-                    renderContent()
-                }
+                <div key={reloadKey}>
+                    {renderContent()}
+                </div>
                 <button onClick={() => simulate_month()}>Simulate month</button>
             </div>
         </div>

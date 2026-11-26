@@ -410,35 +410,113 @@ public class RequestService
             return true;
         }
 
+        string trimmed = check_employer_decision(reason, confirmed, "cancelled",
+            "An approved holiday can only be cancelled by the employer in a force-majeure-like situation, " +
+            "after consulting the employee and with their financial loss covered. Confirm this to cancel it.");
+
+        DateTime now = DateTime.UtcNow;
+        await record_employer_cancellation(request, accountant_id, trimmed, now);
+        await cancel_holiday(request, now);
+
+        await transaction.CommitAsync();
+        return false;
+    }
+
+    // the accountant moves an approved holiday to new dates on the employer's decision (05.11 § 10): only before it
+    // starts, only in a force-majeure-like situation with the new dates agreed with the employee (confirmed), the
+    // reason is recorded. it is the employer's cancellation of the old holiday + a new approved holiday on the new
+    // dates (same account) that points to it (replaces_request_id), all in one transaction: if the new dates break a
+    // rule, nothing changes. the new dates are checked like any request (period, overlap, balance, debt, 31 August)
+    // but without the notice: the move is urgent and agreed with the employee.
+    // throws KeyNotFoundException, ArgumentException (reason / confirmation / same dates),
+    // RequestStateException (not approved / started / the employee asked to cancel), InvalidOperationException (rule)
+    public async Task<HolidayRequest> EmployerReschedule(Guid request_id, Guid accountant_id, DateOnly start, DateOnly end,
+        string? reason, bool confirmed)
+    {
+        await using var transaction = await db.BeginTransactionAsync();
+
+        HolidayRequest? request = await db.HolidayRequest.FirstOrDefaultAsync(r => r.id == request_id);
+        if (request == null)
+        {
+            throw new KeyNotFoundException("Holiday not found");
+        }
+        await check_can_be_cancelled(request, "The holiday has already started, it can not be moved anymore.");
+
+        // the employee wants to cancel it, moving it would ignore that: the accountant must answer the employee first
+        if (await db.cancellation_requests.AnyAsync(c => c.holiday_request_id == request_id && c.status == RequestStatus.Pending))
+        {
+            throw new RequestStateException(
+                "The employee has asked to cancel this holiday. Approve or decline their cancellation request first.");
+        }
+
+        string trimmed = check_employer_decision(reason, confirmed, "moved",
+            "An approved holiday can only be moved by the employer in a force-majeure-like situation, with the new " +
+            "dates agreed with the employee and their financial loss covered. Confirm this to move it.");
+
+        if (start.ToString("yyyy-MM-dd") == request.StartDate && end.ToString("yyyy-MM-dd") == request.EndDate)
+        {
+            throw new ArgumentException("The new dates are the same as the current ones");
+        }
+
+        // the old holiday is cancelled first: its hours are back and it no longer counts as an overlap,
+        // so the new dates are checked against the balance without it
+        DateTime now = DateTime.UtcNow;
+        await record_employer_cancellation(request, accountant_id, trimmed, now);
+        await cancel_holiday(request, now);
+
+        ValidatedRequest valid = await validator.validate(request.user_id, request.account_id, start, end,
+            ignore_request_id: null, check_notice: false);
+
+        HolidayRequest moved = await db.HolidayRequest.InsertWithOutputAsync(new HolidayRequest
+        {
+            user_id = request.user_id,
+            account_id = request.account_id,
+            StartDate = start.ToString("yyyy-MM-dd"),
+            EndDate = end.ToString("yyyy-MM-dd"),
+            Hours = valid.hours,
+            is_main_holiday = valid.is_main_holiday,
+            created_at = now,
+            decided_at = now,
+            RequestStatus = RequestStatus.Accepted,
+            replaces_request_id = request.id
+        });
+        await change_used_hours(valid.account, valid.hours);
+
+        await transaction.CommitAsync();
+        return moved;
+    }
+
+    // the reason of an employer's decision is required (the law asks to record it) and the accountant must confirm the
+    // force-majeure-like situation. returns the trimmed reason
+    private static string check_employer_decision(string? reason, bool confirmed, string action, string confirm_message)
+    {
         string trimmed = reason?.Trim() ?? "";
         if (trimmed.Length < MIN_EMPLOYER_REASON_LENGTH)
         {
             throw new ArgumentException(
-                $"Write why the holiday is cancelled (at least {MIN_EMPLOYER_REASON_LENGTH} characters), the reason must be recorded");
+                $"Write why the holiday is {action} (at least {MIN_EMPLOYER_REASON_LENGTH} characters), the reason must be recorded");
         }
         if (!confirmed)
         {
-            throw new ArgumentException(
-                "An approved holiday can only be cancelled by the employer in a force-majeure-like situation, " +
-                "after consulting the employee and with their financial loss covered. Confirm this to cancel it.");
+            throw new ArgumentException(confirm_message);
         }
+        return trimmed;
+    }
 
-        DateTime now = DateTime.UtcNow;
+    // the employer's cancellation is saved directly as approved, with the reason. must run inside the caller's transaction
+    private async Task record_employer_cancellation(HolidayRequest request, Guid accountant_id, string reason, DateTime now)
+    {
         await db.cancellation_requests.InsertAsync(() => new HolidayCancellationRequest
         {
             holiday_request_id = request.id,
             user_id = request.user_id,
-            reason = trimmed,
+            reason = reason,
             status = RequestStatus.Accepted,
             initiated_by = CancellationInitiator.Employer,
             created_at = now,
             decided_at = now,
             decided_by = accountant_id
         });
-        await cancel_holiday(request, now);
-
-        await transaction.CommitAsync();
-        return false;
     }
 
     public const int MIN_EMPLOYER_REASON_LENGTH = 10;
@@ -490,14 +568,15 @@ public class RequestService
         return holidays.OrderBy(h => h.StartDate).ThenBy(h => h.Name).ToList();
     }
 
-    // holidays of the employee the accountant cancelled on the employer's decision, whose dates are not over yet,
-    // so the employee sees that and why their planned holiday was cancelled
-    public async Task<List<CancelledHolidayView>> GetCancelledByEmployer(Guid userId)
+    // holidays of the employee the accountant cancelled or moved on the employer's decision, with the reason, so the
+    // employee sees what happened to their planned holiday. a holiday was MOVED if a request replaces it
+    // (EmployerReschedule), otherwise it was cancelled. shown while the old or the new dates are not over yet
+    public async Task<List<CancelledHolidayView>> GetChangedByEmployer(Guid userId)
     {
         DateOnly today = await currentDateService.get_current_date();
         string today_text = today.ToString("yyyy-MM-dd");
 
-        var rows = await db.cancellation_requests
+        List<CancelledHolidayView> rows = await db.cancellation_requests
             .Where(c => c.user_id == userId && c.initiated_by == CancellationInitiator.Employer
                         && c.status == RequestStatus.Accepted)
             .Join(db.HolidayRequest, c => c.holiday_request_id, r => r.id, (c, r) => new {c, r})
@@ -515,8 +594,26 @@ public class RequestService
                 })
             .ToListAsync();
 
+        List<Guid> ids = rows.Select(r => r.Id).ToList();
+        Dictionary<Guid, HolidayRequest> moved_to = (await db.HolidayRequest
+                .Where(r => r.replaces_request_id != null && ids.Contains(r.replaces_request_id.Value))
+                .ToListAsync())
+            .ToDictionary(r => r.replaces_request_id!.Value);
+
+        foreach (CancelledHolidayView row in rows)
+        {
+            if (moved_to.TryGetValue(row.Id, out HolidayRequest? to))
+            {
+                row.MovedToStartDate = to.StartDate;
+                row.MovedToEndDate = to.EndDate;
+                row.MovedToHours = to.Hours;
+            }
+        }
+
+        // dates are "yyyy-MM-dd", so comparing the text compares the dates
         return rows
-            .Where(v => string.CompareOrdinal(v.EndDate, today_text) >= 0)
+            .Where(v => string.CompareOrdinal(v.EndDate, today_text) >= 0
+                        || (v.MovedToEndDate != null && string.CompareOrdinal(v.MovedToEndDate, today_text) >= 0))
             .OrderBy(v => v.StartDate)
             .ToList();
     }
