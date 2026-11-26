@@ -2,77 +2,113 @@ import {useEffect, useState} from "react";
 import {DesConfirmation} from "@/dialog/DesConfirmation.tsx";
 import {requestApi} from "@/api/client.ts";
 import {errorText} from "@/api/errors.ts";
-import {type HolidayRequestUser, HolidayType, RequestStatus} from "@/api/Api.ts";
+import {type CancellationRequestView, type HolidayRequestUser, HolidayType} from "@/api/Api.ts";
 
+// pending holiday requests and pending cancellation requests (of approved holidays) of the chosen account type
 export function RequestsTab(){
 
     const [week6Active, setWeek6Active] = useState(false)
     const [currentRequests, setCurrentRequests] = useState<HolidayRequestUser[]>([])
+    const [cancellations, setCancellations] = useState<CancellationRequestView[]>([])
     const [selectedRequestId, setSelectedRequestId] = useState<string>('')
+    const [selectedCancellationId, setSelectedCancellationId] = useState<string>('')
     const [activeMenu, setActiveMenu] = useState<string | null>(null)
+    const [message, setMessage] = useState<{ text: string, error: boolean } | null>(null)
 
     const targetKind = week6Active ? HolidayType.FerieUge : HolidayType.FerieEfterFerieloven;
-    const filteredRequests = currentRequests.filter((r) => (r.holidayType) === targetKind)
+    const filteredRequests = currentRequests.filter((r) => r.holidayType === targetKind)
+    const filteredCancellations = cancellations.filter((c) => c.holidayType === targetKind)
 
     useEffect(() => {
-        getRequests();
+        load();
     }, [])
 
-    async function getRequests(){
+    async function load(){
         try{
-            const response = await requestApi.getRequests()
-            setCurrentRequests(response)
+            const [requests, cancellationRequests] = await Promise.all([
+                requestApi.getRequests(),
+                requestApi.getCancellationRequests()
+            ])
+            setCurrentRequests(requests)
+            setCancellations(cancellationRequests)
         }catch(err){
-            console.log(err)
+            setMessage({text: errorText(err, "Could not load the requests."), error: true})
         }
     }
 
-    async function declineRequest() {
-        if (!selectedRequestId) return;
+    // every action reloads the lists, also when it failed: e.g. 409 = already handled by another tab
+    async function run(action: () => Promise<unknown>, success: string, fallback: string) {
         try {
-            await requestApi.declineRequest(selectedRequestId)
+            await action()
+            setMessage({text: success, error: false})
         } catch (err) {
-            // e.g. 409: the request was already handled (by another tab or accountant)
-            console.log(errorText(err, "Could not decline the request."))
+            // e.g. "The request can not be approved: Not enough holiday: ..."
+            setMessage({text: errorText(err, fallback), error: true})
         }
-        // reload in both cases, so a request that is not pending anymore disappears from the list
-        await getRequests();
+        await load();
     }
 
-    async function acceptRequest(id : string) {
-        try{
-            await requestApi.acceptRequest(id)
-        }catch(err){
-            console.log(errorText(err, "Could not approve the request."))
-        }
-        await getRequests();
-    }
+    const declineRequest = () => run(() => requestApi.declineRequest(selectedRequestId),
+        "The request was declined.", "Could not decline the request.")
+    const acceptRequest = (id: string) => run(() => requestApi.acceptRequest(id),
+        "The request was approved.", "Could not approve the request.")
+    const acceptCancellation = (id: string) => run(() => requestApi.acceptCancellation(id),
+        "The holiday was cancelled and its hours were returned.", "Could not cancel the holiday.")
+    const declineCancellation = () => run(() => requestApi.declineCancellation(selectedCancellationId),
+        "The cancellation was declined, the holiday stays approved.", "Could not decline the cancellation.")
 
     return(
         <div className={"flex center-v p-16"}>
             {
-                activeMenu === 'destruct' && <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to decline this user's request?"} onConfirm={() => declineRequest()}/>
+                activeMenu === 'decline' && <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to decline this user's request?"} onConfirm={declineRequest}/>
+            }
+            {
+                activeMenu === 'declineCancellation' && <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Decline the cancellation? The holiday stays approved."} onConfirm={declineCancellation}/>
             }
             <h1>Pending Requests for {week6Active ? 'Week 6' : 'Week 1-5'}</h1>
             <div className={"flex table-border table-tools"}>
                 <button onClick={() => setWeek6Active(true)}>Week 6</button>
                 <button onClick={() => setWeek6Active(false)}>Week 1-5</button>
             </div>
+            {message && <p className={message.error ? "error" : "success"}>{message.text}</p>}
             <div className={"flex direction-column table-border p-16 g-20"}>
+                {filteredRequests.length === 0 && <p>No pending requests.</p>}
                 {
                     filteredRequests.map((r) => (
                         <div key={r.id} className={'flex p-16 shadow space-between'}>
                             <div>
                                 <h1>Name: {r.name}</h1>
-                                <p>Holiday start: {r.startDate}</p>
-                                <p>Holiday end: {r.endDate}</p>
-                                <p>Status: {RequestStatus[r.status as number]}</p>
+                                <p>Holiday: {r.startDate} to {r.endDate}</p>
+                                <p>Hours: {r.hours?.toFixed(2)} h {r.isMainHoliday && <span className={"ongoing-requests__tag"}>Main holiday</span>}</p>
                             </div>
                             <div className={'flex g-10 center-v'}>
                                 <button onClick={() => acceptRequest(r.id as string)} className={'request-button'}>Approve</button>
                                 <button onClick={() => {
                                     setSelectedRequestId(r.id as string);
-                                    setActiveMenu('destruct')
+                                    setActiveMenu('decline')
+                                }} className={'btn-destructive-outline'}>Decline</button>
+                            </div>
+                        </div>
+                    ))
+                }
+            </div>
+
+            <h2 className={"request-section-title"}>Cancellation Requests for {week6Active ? 'Week 6' : 'Week 1-5'}</h2>
+            <div className={"flex direction-column table-border p-16 g-20"}>
+                {filteredCancellations.length === 0 && <p>No pending cancellation requests.</p>}
+                {
+                    filteredCancellations.map((c) => (
+                        <div key={c.id} className={'flex p-16 shadow space-between'}>
+                            <div>
+                                <h1>Name: {c.name}</h1>
+                                <p>Approved holiday: {c.startDate} to {c.endDate} ({c.hours?.toFixed(2)} h)</p>
+                                <p className={"request-reason"}>{c.reason ? `Reason: ${c.reason}` : "No reason given"}</p>
+                            </div>
+                            <div className={'flex g-10 center-v'}>
+                                <button onClick={() => acceptCancellation(c.id as string)} className={'request-button'}>Approve cancellation</button>
+                                <button onClick={() => {
+                                    setSelectedCancellationId(c.id as string);
+                                    setActiveMenu('declineCancellation')
                                 }} className={'btn-destructive-outline'}>Decline</button>
                             </div>
                         </div>

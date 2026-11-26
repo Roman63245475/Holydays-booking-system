@@ -15,9 +15,12 @@ public class UserService
     private HolidayAccountsService holidayAccountsService;
     private HolidayHistoryService holidayHistoryService;
     private ScheduleService scheduleService;
+    private CurrentDateService currentDateService;
 
-    public UserService(Database db, HolidayAccountsService holidayAccountsService, HolidayHistoryService holidayHistoryService, ScheduleService scheduleService)
+    public UserService(Database db, HolidayAccountsService holidayAccountsService, HolidayHistoryService holidayHistoryService,
+        ScheduleService scheduleService, CurrentDateService currentDateService)
     {
+        this.currentDateService = currentDateService;
         this.scheduleService = scheduleService;
         this.db = db;
         this.holidayAccountsService = holidayAccountsService;
@@ -144,10 +147,44 @@ public class UserService
             })
             .ToListAsync();
 
+        // the summer whose main holiday window is not over yet: this year until 30 September, then the next one
+        DateOnly today = await currentDateService.get_current_date();
+        RuleSet rules = HolidayParameters.get_rule_set(today);
+        int season = today.Year;
+        if (today > HolidayParameters.last_day_of_month(season, rules.main_holiday_end_month))
+        {
+            season++;
+        }
+        RuleSet season_rules = HolidayParameters.get_rule_set(new DateOnly(season, rules.main_holiday_start_month, 1));
+        DateOnly window_start = new DateOnly(season, season_rules.main_holiday_start_month, 1);
+        DateOnly window_end = HolidayParameters.last_day_of_month(season, season_rules.main_holiday_end_month);
+        string window_start_text = window_start.ToString("yyyy-MM-dd");
+        string window_end_text = window_end.ToString("yyyy-MM-dd");
+
+        // dates are "yyyy-MM-dd", so comparing the text compares the dates
+        List<RequestStatus> main_holidays = (await db.HolidayRequest
+                .Where(r => r.user_id == userId && r.is_main_holiday
+                            && (r.RequestStatus == RequestStatus.Accepted || r.RequestStatus == RequestStatus.Pending))
+                .Select(r => new { r.StartDate, r.EndDate, r.RequestStatus })
+                .ToListAsync())
+            .Where(r => string.CompareOrdinal(r.StartDate, window_end_text) <= 0
+                        && string.CompareOrdinal(r.EndDate, window_start_text) >= 0)
+            .Select(r => r.RequestStatus)
+            .ToList();
+        string main_holiday_status = main_holidays.Contains(RequestStatus.Accepted) ? "approved"
+            : main_holidays.Contains(RequestStatus.Pending) ? "pending"
+            : "none";
+
         return new UserViewPage
         {
             name = user.name,
             email = user.email,
+            main_holiday_year = season,
+            main_holiday_window_start = window_start,
+            main_holiday_window_end = window_end,
+            main_holiday_length_days = season_rules.main_holiday_length_days,
+            main_holiday_notice_months = rules.main_holiday_notice_months,
+            main_holiday_status = main_holiday_status,
             // weeks 1-5 first, the account that expires first comes first (it should be used first)
             accounts = law_accounts.Concat(agreed_accounts)
                 .OrderBy(a => a.holiday_type)

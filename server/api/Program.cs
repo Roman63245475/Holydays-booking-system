@@ -61,6 +61,7 @@ builder.Services.AddHttpClient<DayOffService>(client =>
     client.Timeout = TimeSpan.FromSeconds(10);
 });
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<RequestValidator>();
 builder.Services.AddScoped<RequestService>();
 builder.Services.AddScoped<AccuralService>();
 builder.Services.AddControllers();

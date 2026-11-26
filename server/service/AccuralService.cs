@@ -237,21 +237,29 @@ public class AccuralService
     // in that month, for the days of the month the period covers (a mid-month start earns only the days worked)
     private static decimal get_exact_accrual(HolidayAccount holiday, HolidayHistory history, List<Schedule> user_schedules)
     {
+        return get_exact_accrual(holiday, history.period_start, history.period_end, user_schedules);
+    }
+
+    // the same for any period inside ONE month (period_start and period_end in the same month, both included).
+    // public, because the balance projection (RequestValidator, balance on 31 August) must accrue future months
+    // exactly the way the real accrual will do it
+    public static decimal get_exact_accrual(HolidayAccount holiday, DateOnly period_start, DateOnly period_end, List<Schedule> user_schedules)
+    {
         // the schedule that applied in that month (schedule history: a change later must not affect this month)
-        Schedule? schedule = Schedule.find_for_date(user_schedules, history.period_start);
+        Schedule? schedule = Schedule.find_for_date(user_schedules, period_start);
         if (schedule == null)
         {
             // without a schedule the hours can not be calculated, accruing 0 would silently lose a month
-            throw new Exception($"User {holiday.user_id} has no working schedule on {history.period_start}, holidays can not be accrued");
+            throw new Exception($"User {holiday.user_id} has no working schedule on {period_start}, holidays can not be accrued");
         }
 
         // the rules that applied in that month (a later change of the rules must not affect this month)
-        RuleSet rule_set = HolidayParameters.get_rule_set(history.period_start);
+        RuleSet rule_set = HolidayParameters.get_rule_set(period_start);
         decimal month_rate = holiday.get_month_rate_hours(schedule, rule_set);
 
         // +1 because both period_start and period_end are included (13..30 = 18 days)
-        int days = history.period_end.DayNumber - history.period_start.DayNumber + 1;
-        return month_rate * days / DateTime.DaysInMonth(history.period_start.Year, history.period_start.Month);
+        int days = period_end.DayNumber - period_start.DayNumber + 1;
+        return month_rate * days / DateTime.DaysInMonth(period_start.Year, period_start.Month);
     }
 
     // earning period is over when the last history month reached the end of the earning period

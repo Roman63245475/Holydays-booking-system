@@ -9,6 +9,15 @@ public class UserViewPage
     public string name  { get; set; }
     public string email { get; set; }
     public List<HolidayAccountView> accounts { get; set; } = new List<HolidayAccountView>();
+
+    // main holiday (hovedferie) of the coming / current summer: the employee has the right to 3 weeks between
+    // 1 May and 30 September. "none" = not requested yet, "pending" = requested, waits for approval, "approved"
+    public int main_holiday_year { get; set; }
+    public DateOnly main_holiday_window_start { get; set; }
+    public DateOnly main_holiday_window_end { get; set; }
+    public int main_holiday_length_days { get; set; }
+    public int main_holiday_notice_months { get; set; }
+    public string main_holiday_status { get; set; } = "none";
 }
 
 public class HolidayAccountView

@@ -51,6 +51,58 @@ public class DatabaseInitializer
             END $$;"
             );
 
+        // columns for edit / withdraw / decisions (see HolidayRequest). CreateIfNotExists does not change an already
+        // existing table, so they are added here for dbs created before they existed
+        db.Execute(@"
+            ALTER TABLE holiday_request
+                ADD COLUMN IF NOT EXISTS is_main_holiday boolean NOT NULL DEFAULT false,
+                ADD COLUMN IF NOT EXISTS updated_at timestamp NULL,
+                ADD COLUMN IF NOT EXISTS decided_at timestamp NULL,
+                ADD COLUMN IF NOT EXISTS replaces_request_id uuid NULL"
+        );
+        // Edit: the new request points to the request it replaced (same table)
+        db.Execute(@"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_holiday_request_replaces') THEN
+                    ALTER TABLE holiday_request
+                        ADD CONSTRAINT fk_holiday_request_replaces
+                        FOREIGN KEY (replaces_request_id) REFERENCES holiday_request(id) ON DELETE SET NULL;
+                END IF;
+            END $$;"
+        );
+        db.Execute(
+            "CREATE INDEX IF NOT EXISTS ix_holiday_request_user_id ON holiday_request (user_id)"
+        );
+
+        // holiday_cancellation_request: the employee asks to cancel an approved holiday
+        db.CreateTable<HolidayCancellationRequest>(
+            tableOptions: TableOptions.CreateIfNotExists
+        );
+        db.Execute(
+            "ALTER TABLE holiday_cancellation_request ALTER COLUMN id SET DEFAULT gen_random_uuid()"
+        );
+        db.Execute(@"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_cancellation_request_holiday') THEN
+                    ALTER TABLE holiday_cancellation_request
+                        ADD CONSTRAINT fk_cancellation_request_holiday
+                        FOREIGN KEY (holiday_request_id) REFERENCES holiday_request(id) ON DELETE CASCADE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_cancellation_request_user') THEN
+                    ALTER TABLE holiday_cancellation_request
+                        ADD CONSTRAINT fk_cancellation_request_user
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+                END IF;
+            END $$;"
+        );
+        // at most one PENDING cancellation per holiday (status 2 = RequestStatus.Pending),
+        // declined and approved ones stay in the history
+        db.Execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_cancellation_request_pending ON holiday_cancellation_request (holiday_request_id) WHERE status = 2"
+        );
+
         // law_holidays
         db.CreateTable<LawHolidays>(
             tableOptions: TableOptions.CreateIfNotExists

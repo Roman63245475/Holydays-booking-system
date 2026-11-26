@@ -101,8 +101,154 @@ public class RequestController : ControllerBase
     public async Task<IActionResult> AcceptRequest([FromRoute] Guid id) {
         var error = ValidateUser(Role.Accountant);
         if (error != null) return error;
-        if (!await requestService.AcceptRequest(id))
-            return Conflict("Only a pending request can be approved. This request does not exist or was already handled.");
-        return Ok();
+        try
+        {
+            await requestService.AcceptRequest(id);
+            return Ok();
+        }
+        catch (RequestStateException e)
+        {
+            return Conflict(e.Message);
+        }
+        catch (InvalidOperationException e)
+        {
+            // the request is checked again before approval, e.g. the balance is not enough anymore
+            return Conflict("The request can not be approved: " + e.Message);
+        }
+    }
+
+    // Edit: new dates for a pending request of the logged in user. the old request becomes Withdrawn,
+    // a new pending request with the new dates replaces it
+    [HttpPut("request/{id}/edit")]
+    public async Task<ActionResult<HolidayRequest>> EditRequest([FromRoute] Guid id, [FromBody] EditRequestDTO dto)
+    {
+        if (!TryGetUserId(out Guid userId)) return Unauthorized("Not logged in");
+        if (!TryParseDates(dto.StartDate, dto.EndDate, out DateOnly start, out DateOnly end))
+        {
+            return BadRequest("Invalid holiday dates.");
+        }
+
+        try
+        {
+            return Ok(await requestService.EditRequest(userId, id, start, end));
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (RequestStateException e)
+        {
+            return Conflict(e.Message);
+        }
+        catch (InvalidOperationException e)
+        {
+            // the new dates break a holiday rule, nothing was changed
+            return BadRequest(e.Message);
+        }
+    }
+
+    // the logged in user takes back a pending request (no new request is created)
+    [HttpPost("request/{id}/withdraw")]
+    public async Task<IActionResult> WithdrawRequest([FromRoute] Guid id)
+    {
+        if (!TryGetUserId(out Guid userId)) return Unauthorized("Not logged in");
+        try
+        {
+            await requestService.WithdrawRequest(userId, id);
+            return Ok();
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (RequestStateException e)
+        {
+            return Conflict(e.Message);
+        }
+    }
+
+    // approved holidays of the logged in user that are not over yet
+    [HttpGet("request/approved")]
+    public async Task<ActionResult<List<OngoingHolidayRequest>>> GetApprovedRequests()
+    {
+        if (!TryGetUserId(out Guid userId)) return Unauthorized("Not logged in");
+        return Ok(await requestService.GetApprovedRequests(userId));
+    }
+
+    // the logged in user asks to cancel one of their approved holidays (the accountant decides)
+    [HttpPost("request/{id}/cancel")]
+    public async Task<ActionResult<HolidayCancellationRequest>> CancelApprovedRequest([FromRoute] Guid id, [FromBody] CancelRequestDTO dto)
+    {
+        if (!TryGetUserId(out Guid userId)) return Unauthorized("Not logged in");
+        if (dto.Reason != null && dto.Reason.Length > 500)
+        {
+            return BadRequest("The reason can be at most 500 characters long.");
+        }
+
+        try
+        {
+            return Ok(await requestService.RequestCancellation(userId, id, dto.Reason));
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (RequestStateException e)
+        {
+            return Conflict(e.Message);
+        }
+    }
+
+    [HttpGet("requests/getCancellationRequests")]
+    public async Task<ActionResult<List<CancellationRequestView>>> GetCancellationRequests()
+    {
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
+        return Ok(await requestService.GetCancellationRequests());
+    }
+
+    [HttpPost("requests/acceptCancellation/{id}")]
+    public async Task<IActionResult> AcceptCancellation([FromRoute] Guid id)
+    {
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
+        try
+        {
+            await requestService.AcceptCancellation(id);
+            return Ok();
+        }
+        catch (RequestStateException e)
+        {
+            return Conflict(e.Message);
+        }
+    }
+
+    [HttpPost("requests/declineCancellation/{id}")]
+    public async Task<IActionResult> DeclineCancellation([FromRoute] Guid id)
+    {
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
+        try
+        {
+            await requestService.DeclineCancellation(id);
+            return Ok();
+        }
+        catch (RequestStateException e)
+        {
+            return Conflict(e.Message);
+        }
+    }
+
+    private bool TryGetUserId(out Guid userId)
+    {
+        return Guid.TryParse(HttpContext.Session.GetString("userId"), out userId);
+    }
+
+    private static bool TryParseDates(string? start_text, string? end_text, out DateOnly start, out DateOnly end)
+    {
+        end = default;
+        return DateOnly.TryParseExact(start_text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out start)
+               && DateOnly.TryParseExact(end_text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out end)
+               && end >= start;
     }
 }

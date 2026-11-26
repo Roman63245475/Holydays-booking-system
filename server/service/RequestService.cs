@@ -6,70 +6,36 @@ using LinqToDB.Async;
 
 namespace service;
 
+// the request (or cancellation) is not in the state the action needs anymore, e.g. it was already approved,
+// declined or withdrawn (by another tab / the accountant). the controller answers 409 Conflict with the message
+public class RequestStateException : Exception
+{
+    public RequestStateException(string message) : base(message)
+    {
+    }
+}
+
 public class RequestService
 {
     private readonly Database db;
-    private readonly UserService userService;
     private readonly CurrentDateService currentDateService;
+    private readonly RequestValidator validator;
 
-    public RequestService(Database db, UserService userService, CurrentDateService currentDateService)
+    public RequestService(Database db, CurrentDateService currentDateService, RequestValidator validator)
     {
         this.db = db;
-        this.userService = userService;
         this.currentDateService = currentDateService;
+        this.validator = validator;
     }
 
+    // a new pending request. all holiday rules are checked by RequestValidator (InvalidOperationException if broken)
     public async Task<HolidayRequest> SendRequest(RequestDTO requestdto)
     {
-        // the account must belong to the user and must not be expired. "active" (still earning) does not matter here:
-        // week 6 can only be used after its earning year, and weeks 1-5 also 4 months after their earning period ended
-        HolidayAccount? account =
-            (HolidayAccount?)await db.law_holidays.FirstOrDefaultAsync(l =>
-                l.id == requestdto.account_id && l.user_id == requestdto.user_id && l.usable)
-            ?? await db.agreed_holidays.FirstOrDefaultAsync(a =>
-                a.id == requestdto.account_id && a.user_id == requestdto.user_id && a.usable);
-        if (account == null)
-        {
-            throw new InvalidOperationException("No usable holiday account was found for this user");
-        }
-
-        // the holiday itself (not the day the request is sent) must lie inside the usage period of the account,
-        // so a holiday can be requested long in advance as long as its dates fit
         DateOnly start = DateOnly.ParseExact(requestdto.StartDate, "yyyy-MM-dd");
         DateOnly end = DateOnly.ParseExact(requestdto.EndDate, "yyyy-MM-dd");
 
-        // a usable account can still contain days that are already over (e.g. law account in March: Sep - Feb are past),
-        // so the holiday must not start before today. "today" is the simulated date (time simulator), not DateTime.Now.
-        // TODO: replaced by the notice rule later (start >= today + 1 month, 3 months for the main holiday)
-        DateOnly today = await currentDateService.get_current_date();
-        if (start < today)
-        {
-            throw new InvalidOperationException($"A holiday can not start in the past (today is {today:yyyy-MM-dd})");
-        }
-
-        if (!account.covers(start, end))
-        {
-            throw new InvalidOperationException(
-                $"This balance can only be used from {account.usage_period_start:yyyy-MM-dd} to {account.usage_period_end:yyyy-MM-dd}");
-        }
-
-        // the cost of the holiday is calculated here, never taken from the client:
-        // every day costs the hours of that weekday in the employee's own schedule that applies on that day
-        List<Schedule> schedules = await db.schedules.Where(s => s.user_id == requestdto.user_id).ToListAsync();
-        HashSet<DateOnly> days_off = (await db.days_off
-                .Where(d => d.date >= start && d.date <= end)
-                .Select(d => d.date)
-                .ToListAsync())
-            .ToHashSet();
-
-        decimal hours = calculate_holiday_hours(start, end, schedules, days_off);
-        if (hours == 0)
-        {
-            throw new InvalidOperationException(
-                "The selected days contain no working days (weekends, public holidays and your days off are not holiday)");
-        }
-
-        await check_balance(account, hours, schedules, today);
+        ValidatedRequest valid = await validator.validate(requestdto.user_id, requestdto.account_id, start, end,
+            ignore_request_id: null, check_notice: true);
 
         var request = new HolidayRequest()
         {
@@ -77,12 +43,85 @@ public class RequestService
             account_id = requestdto.account_id,
             StartDate = requestdto.StartDate,
             EndDate = requestdto.EndDate,
-            Hours = hours,
+            Hours = valid.hours,
+            is_main_holiday = valid.is_main_holiday,
             created_at = requestdto.created_at,
-            RequestStatus = requestdto.RequestStatus
+            RequestStatus = RequestStatus.Pending
         };
 
         return await db.HolidayRequest.InsertWithOutputAsync(request);
+    }
+
+    // Edit of a pending request: the old request becomes Withdrawn and a new pending request with the new dates
+    // (same account) is created, pointing to the old one (replaces_request_id), so the full history is kept.
+    // the new dates go through all rules again; if they break one, nothing is changed (the transaction is rolled back).
+    // throws KeyNotFoundException (not the user's request), RequestStateException (not pending anymore),
+    // InvalidOperationException (a holiday rule)
+    public async Task<HolidayRequest> EditRequest(Guid user_id, Guid request_id, DateOnly start, DateOnly end)
+    {
+        await using var transaction = await db.BeginTransactionAsync();
+
+        HolidayRequest? old = await db.HolidayRequest.FirstOrDefaultAsync(r => r.id == request_id && r.user_id == user_id);
+        if (old == null)
+        {
+            throw new KeyNotFoundException("Request not found");
+        }
+
+        // the status condition is in the UPDATE itself: if the accountant approved / declined it in the meantime,
+        // nothing is updated. the old request is withdrawn first, so it does not count as an overlap or as reserved
+        // hours when the new dates are checked
+        DateTime now = DateTime.UtcNow;
+        int updated = await db.HolidayRequest
+            .Where(r => r.id == request_id && r.RequestStatus == RequestStatus.Pending)
+            .Set(r => r.RequestStatus, RequestStatus.Withdrawn)
+            .Set(r => r.updated_at, now)
+            .UpdateAsync();
+        if (updated == 0)
+        {
+            throw new RequestStateException(
+                "Only a pending request can be changed. This request was already approved, declined or withdrawn.");
+        }
+
+        ValidatedRequest valid = await validator.validate(user_id, old.account_id, start, end,
+            ignore_request_id: null, check_notice: true);
+
+        HolidayRequest created = await db.HolidayRequest.InsertWithOutputAsync(new HolidayRequest
+        {
+            user_id = user_id,
+            account_id = old.account_id,
+            StartDate = start.ToString("yyyy-MM-dd"),
+            EndDate = end.ToString("yyyy-MM-dd"),
+            Hours = valid.hours,
+            is_main_holiday = valid.is_main_holiday,
+            created_at = now,
+            RequestStatus = RequestStatus.Pending,
+            replaces_request_id = old.id
+        });
+
+        await transaction.CommitAsync();
+        return created;
+    }
+
+    // the employee takes back a pending request: it becomes Withdrawn, no new request is created.
+    // nothing is given back, pending hours were only reserved, never spent
+    public async Task WithdrawRequest(Guid user_id, Guid request_id)
+    {
+        bool exists = await db.HolidayRequest.AnyAsync(r => r.id == request_id && r.user_id == user_id);
+        if (!exists)
+        {
+            throw new KeyNotFoundException("Request not found");
+        }
+
+        int updated = await db.HolidayRequest
+            .Where(r => r.id == request_id && r.user_id == user_id && r.RequestStatus == RequestStatus.Pending)
+            .Set(r => r.RequestStatus, RequestStatus.Withdrawn)
+            .Set(r => r.updated_at, DateTime.UtcNow)
+            .UpdateAsync();
+        if (updated == 0)
+        {
+            throw new RequestStateException(
+                "Only a pending request can be withdrawn. This request was already approved, declined or withdrawn.");
+        }
     }
 
     // hours a holiday from start to end (both included) costs. a day costs nothing if it is
@@ -112,40 +151,7 @@ public class RequestService
         return hours;
     }
 
-    // the balance of the account must cover the new request. hours of PENDING requests on the same account are
-    // reserved too, otherwise several requests could together spend more than the balance before any is approved.
-    // holiday debt: an account that is still being earned (weeks 1-5, active) may go below 0 by at most
-    // max_holiday_debt_days (1 week). week 6 and accounts that finished earning get nothing more, so no debt there
-    private async Task check_balance(HolidayAccount account, decimal hours, List<Schedule> schedules, DateOnly today)
-    {
-        decimal reserved = await db.HolidayRequest
-            .Where(r => r.account_id == account.id && r.RequestStatus == RequestStatus.Pending)
-            .SumAsync(r => (decimal?)r.Hours) ?? 0;
-
-        decimal available = account.get_available() - reserved;
-
-        decimal allowed_debt = 0;
-        if (account.holiday_type == HolidayType.FerieEfterFerieloven && account.active)
-        {
-            Schedule? schedule = Schedule.find_for_date(schedules, today);
-            if (schedule != null)
-            {
-                // one week = max_holiday_debt_days holiday days of the employee's own schedule (full time 5 * 7.40 = 37 h)
-                RuleSet rule_set = HolidayParameters.get_rule_set(today);
-                allowed_debt = Math.Round(rule_set.max_holiday_debt_days * schedule.get_average_day_hours(), 2,
-                    MidpointRounding.AwayFromZero);
-            }
-        }
-
-        if (available - hours < -allowed_debt)
-        {
-            string debt_text = allowed_debt > 0 ? $" + {allowed_debt:0.00} h of allowed holiday debt" : "";
-            string reserved_text = reserved > 0 ? $" ({reserved:0.00} h are reserved by your pending requests)" : "";
-            throw new InvalidOperationException(
-                $"Not enough holiday: the request costs {hours:0.00} h, you have {available:0.00} h{debt_text}{reserved_text}");
-        }
-    }
-
+    // pending requests of all employees (accountant)
     public async Task<List<HolidayRequestUser>> GetRequests() {
         return await db.HolidayRequest
             .Where(r => r.RequestStatus == RequestStatus.Pending)
@@ -162,31 +168,70 @@ public class RequestService
                     Name = x.u.name,
                     StartDate = x.r.StartDate,
                     EndDate = x.r.EndDate,
+                    Hours = x.r.Hours,
+                    IsMainHoliday = x.r.is_main_holiday,
                     HolidayType = x.law != null ? x.law.holiday_type : agreed.holiday_type,
                     Status = x.r.RequestStatus
                 }
             ).ToListAsync();
     }
 
+    // pending requests of the employee (Ongoing Requests tab), newest first
     public async Task<List<OngoingHolidayRequest>> GetOngoingRequests(Guid userId)
     {
+        List<OngoingHolidayRequest> requests = await get_user_requests(userId, RequestStatus.Pending);
+        return requests.OrderByDescending(r => r.CreatedAt).ToList();
+    }
+
+    // approved holidays of the employee that are not over yet (Approved Holidays tab), the next one first.
+    // Started = it can not be cancelled anymore, HasPendingCancellation = a cancellation waits for the accountant
+    public async Task<List<OngoingHolidayRequest>> GetApprovedRequests(Guid userId)
+    {
+        DateOnly today = await currentDateService.get_current_date();
+        string today_text = today.ToString("yyyy-MM-dd");
+
+        List<OngoingHolidayRequest> requests = (await get_user_requests(userId, RequestStatus.Accepted))
+            // dates are "yyyy-MM-dd", so comparing the text compares the dates
+            .Where(r => string.CompareOrdinal(r.EndDate, today_text) >= 0)
+            .ToList();
+
+        List<Guid> ids = requests.Select(r => r.Id).ToList();
+        HashSet<Guid> with_pending_cancellation = (await db.cancellation_requests
+                .Where(c => ids.Contains(c.holiday_request_id) && c.status == RequestStatus.Pending)
+                .Select(c => c.holiday_request_id)
+                .ToListAsync())
+            .ToHashSet();
+
+        foreach (OngoingHolidayRequest r in requests)
+        {
+            r.HasPendingCancellation = with_pending_cancellation.Contains(r.Id);
+            r.Started = string.CompareOrdinal(r.StartDate, today_text) <= 0;
+        }
+
+        return requests.OrderBy(r => r.StartDate).ToList();
+    }
+
+    private async Task<List<OngoingHolidayRequest>> get_user_requests(Guid userId, RequestStatus status)
+    {
         var lawRequests = await db.HolidayRequest
-            .Where(r => r.user_id == userId && r.RequestStatus == RequestStatus.Pending)
+            .Where(r => r.user_id == userId && r.RequestStatus == status)
             .Join(db.law_holidays, r => r.account_id, a => a.id, (r, a) => new OngoingHolidayRequest
             {
                 Id = r.id, StartDate = r.StartDate, EndDate = r.EndDate, Hours = r.Hours,
-                CreatedAt = r.created_at, HolidayKind = "law", RequestStatus = r.RequestStatus
+                CreatedAt = r.created_at, HolidayKind = "law", RequestStatus = r.RequestStatus,
+                IsMainHoliday = r.is_main_holiday
             }).ToListAsync();
 
         var agreedRequests = await db.HolidayRequest
-            .Where(r => r.user_id == userId && r.RequestStatus == RequestStatus.Pending)
+            .Where(r => r.user_id == userId && r.RequestStatus == status)
             .Join(db.agreed_holidays, r => r.account_id, a => a.id, (r, a) => new OngoingHolidayRequest
             {
                 Id = r.id, StartDate = r.StartDate, EndDate = r.EndDate, Hours = r.Hours,
-                CreatedAt = r.created_at, HolidayKind = "agreed", RequestStatus = r.RequestStatus
+                CreatedAt = r.created_at, HolidayKind = "agreed", RequestStatus = r.RequestStatus,
+                IsMainHoliday = r.is_main_holiday
             }).ToListAsync();
 
-        return lawRequests.Concat(agreedRequests).OrderByDescending(r => r.CreatedAt).ToList();
+        return lawRequests.Concat(agreedRequests).ToList();
     }
 
     // only a PENDING request can be declined. an accepted request has already added its hours to used_holiday_hours,
@@ -196,77 +241,190 @@ public class RequestService
         int updated = await db.HolidayRequest
             .Where(r => r.id == id && r.RequestStatus == RequestStatus.Pending)
             .Set(r => r.RequestStatus, RequestStatus.Rejected)
+            .Set(r => r.decided_at, DateTime.UtcNow)
             .UpdateAsync();
         return updated > 0;
     }
 
-    // returns false if the request does not exist or is not pending anymore
-    public async Task<bool> AcceptRequest(Guid id) {
+    // the request is checked again before it is approved: since it was sent the balance may have changed
+    // (other approvals, a schedule change, a new company day off changes its cost). the notice is not checked again.
+    // throws RequestStateException (not pending anymore) or InvalidOperationException (a holiday rule is broken now)
+    public async Task AcceptRequest(Guid id) {
         await using var transaction = await db.BeginTransactionAsync();
-        var request = await db.HolidayRequest.FirstOrDefaultAsync(r => r.id == id && r.RequestStatus == RequestStatus.Pending);
+        HolidayRequest? request = await db.HolidayRequest.FirstOrDefaultAsync(r => r.id == id && r.RequestStatus == RequestStatus.Pending);
+        if (request == null)
+        {
+            throw new RequestStateException(
+                "Only a pending request can be approved. This request does not exist or was already handled.");
+        }
 
-        if (request == null) return false;
+        ValidatedRequest valid = await validator.validate(request.user_id, request.account_id,
+            DateOnly.ParseExact(request.StartDate, "yyyy-MM-dd"), DateOnly.ParseExact(request.EndDate, "yyyy-MM-dd"),
+            ignore_request_id: request.id, check_notice: false);
 
-        // the status condition is repeated in the UPDATE: if another accept/decline changed the request after it was
-        // read above, nothing is updated and the hours are not added a second time
+        // the status condition is repeated in the UPDATE: if another accept/decline/withdraw changed the request after
+        // it was read above, nothing is updated and the hours are not added a second time.
+        // the hours are the recalculated ones, so the balance is charged what the holiday costs today
         int updated = await db.HolidayRequest
             .Where(r => r.id == id && r.RequestStatus == RequestStatus.Pending)
             .Set(r => r.RequestStatus, RequestStatus.Accepted)
+            .Set(r => r.decided_at, DateTime.UtcNow)
+            .Set(r => r.Hours, valid.hours)
             .UpdateAsync();
-        if (updated == 0) return false;
-
-        var updateLaw = await db.law_holidays.Where(l => l.id == request.account_id)
-            .Set(l => l.used_holiday_hours, l => l.used_holiday_hours + request.Hours).UpdateAsync();
-
-        if (updateLaw == 0) {
-            await db.agreed_holidays.Where(a => a.id == request.account_id)
-                .Set(r => r.used_holiday_hours, r => r.used_holiday_hours + request.Hours).UpdateAsync();
+        if (updated == 0)
+        {
+            throw new RequestStateException(
+                "Only a pending request can be approved. This request does not exist or was already handled.");
         }
-        
+
+        await change_used_hours(valid.account, valid.hours);
         await transaction.CommitAsync();
-        return true;
     }
 
-    // public async Task<RequestDTO[]> GetOngoingRequests(Guid userId)
-    // {
-    //     var pendingRequests = db.HolidayRequest
-    //         .Where(request => request.user_id == userId
-    //                           && request.RequestStatus == RequestStatus.Pending);
-    //
-    //     var lawRequests = await pendingRequests
-    //         .Join(db.law_holidays,
-    //             request => request.account_id,
-    //             account => account.id,
-    //             (request, account) => new RequestDTO
-    //             {
-    //                 user_id = request.user_id,
-    //                 StartDate = request.StartDate,
-    //                 EndDate = request.EndDate,
-    //                 Hours = request.Hours,
-    //                 created_at = request.created_at,
-    //                 HolidayKind = "law",
-    //                 RequestStatus = request.RequestStatus
-    //             })
-    //         .ToArrayAsync();
-    //
-    //     var agreedRequests = await pendingRequests
-    //         .Join(db.agreed_holidays,
-    //             request => request.account_id,
-    //             account => account.id,
-    //             (request, account) => new RequestDTO
-    //             {
-    //                 user_id = request.user_id,
-    //                 StartDate = request.StartDate,
-    //                 EndDate = request.EndDate,
-    //                 Hours = request.Hours,
-    //                 created_at = request.created_at,
-    //                 HolidayKind = "agreed",
-    //                 RequestStatus = request.RequestStatus
-    //             })
-    //         .ToArrayAsync();
-    //
-    //     return lawRequests.Concat(agreedRequests)
-    //         .OrderByDescending(request => request.created_at)
-    //         .ToArray();
-    // }
+    // the employee asks to cancel an approved holiday. only before it starts: a started holiday can never be
+    // interrupted. the holiday stays approved until the accountant approves the cancellation
+    public async Task<HolidayCancellationRequest> RequestCancellation(Guid user_id, Guid request_id, string? reason)
+    {
+        HolidayRequest? request = await db.HolidayRequest.FirstOrDefaultAsync(r => r.id == request_id && r.user_id == user_id);
+        if (request == null)
+        {
+            throw new KeyNotFoundException("Holiday not found");
+        }
+        if (request.RequestStatus != RequestStatus.Accepted)
+        {
+            throw new RequestStateException("Only an approved holiday can be cancelled");
+        }
+
+        DateOnly today = await currentDateService.get_current_date();
+        if (DateOnly.ParseExact(request.StartDate, "yyyy-MM-dd") <= today)
+        {
+            throw new RequestStateException("This holiday has already started, it can not be cancelled anymore");
+        }
+
+        if (await db.cancellation_requests.AnyAsync(c => c.holiday_request_id == request_id && c.status == RequestStatus.Pending))
+        {
+            throw new RequestStateException("A cancellation of this holiday is already waiting for the accountant");
+        }
+
+        string? trimmed = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+        return await db.cancellation_requests.InsertWithOutputAsync(new HolidayCancellationRequest
+        {
+            holiday_request_id = request_id,
+            user_id = user_id,
+            reason = trimmed,
+            status = RequestStatus.Pending,
+            created_at = DateTime.UtcNow
+        });
+    }
+
+    // pending cancellation requests of all employees (accountant), the oldest first
+    public async Task<List<CancellationRequestView>> GetCancellationRequests()
+    {
+        return await db.cancellation_requests
+            .Where(c => c.status == RequestStatus.Pending)
+            .Join(db.HolidayRequest, c => c.holiday_request_id, r => r.id, (c, r) => new {c, r})
+            .Join(db.users, x => x.c.user_id, u => u.id, (x, u) => new {x.c, x.r, u})
+            .SelectMany(
+                x => db.law_holidays.LeftJoin(l => l.id == x.r.account_id),
+                (x, law) => new {x.c, x.r, x.u, law}
+            )
+            .SelectMany(
+                x => db.agreed_holidays.LeftJoin(a => a.id == x.r.account_id),
+                (x, agreed) => new CancellationRequestView
+                {
+                    Id = x.c.id,
+                    HolidayRequestId = x.r.id,
+                    Name = x.u.name,
+                    StartDate = x.r.StartDate,
+                    EndDate = x.r.EndDate,
+                    Hours = x.r.Hours,
+                    HolidayType = x.law != null ? x.law.holiday_type : agreed.holiday_type,
+                    Reason = x.c.reason,
+                    CreatedAt = x.c.created_at
+                })
+            .OrderBy(v => v.CreatedAt)
+            .ToListAsync();
+    }
+
+    // the holiday becomes Cancelled and its hours are given back to the account it was spent from.
+    // not possible anymore once the holiday has started (then the accountant can only decline the cancellation)
+    public async Task AcceptCancellation(Guid id)
+    {
+        await using var transaction = await db.BeginTransactionAsync();
+
+        HolidayCancellationRequest? cancellation = await db.cancellation_requests
+            .FirstOrDefaultAsync(c => c.id == id && c.status == RequestStatus.Pending);
+        if (cancellation == null)
+        {
+            throw new RequestStateException("This cancellation request does not exist or was already handled.");
+        }
+
+        HolidayRequest request = await db.HolidayRequest.FirstAsync(r => r.id == cancellation.holiday_request_id);
+        if (request.RequestStatus != RequestStatus.Accepted)
+        {
+            throw new RequestStateException("The holiday is not approved anymore, it can not be cancelled.");
+        }
+
+        DateOnly today = await currentDateService.get_current_date();
+        if (DateOnly.ParseExact(request.StartDate, "yyyy-MM-dd") <= today)
+        {
+            throw new RequestStateException(
+                "The holiday has already started, it can not be cancelled anymore. Decline the cancellation instead.");
+        }
+
+        DateTime now = DateTime.UtcNow;
+        int cancellation_updated = await db.cancellation_requests
+            .Where(c => c.id == id && c.status == RequestStatus.Pending)
+            .Set(c => c.status, RequestStatus.Accepted)
+            .Set(c => c.decided_at, now)
+            .UpdateAsync();
+        int request_updated = await db.HolidayRequest
+            .Where(r => r.id == request.id && r.RequestStatus == RequestStatus.Accepted)
+            .Set(r => r.RequestStatus, RequestStatus.Cancelled)
+            .Set(r => r.updated_at, now)
+            .UpdateAsync();
+        if (cancellation_updated == 0 || request_updated == 0)
+        {
+            throw new RequestStateException("This cancellation request was already handled.");
+        }
+
+        // give the hours back: the approved holiday added exactly request.Hours to used_holiday_hours
+        HolidayAccount account =
+            (HolidayAccount?)await db.law_holidays.FirstOrDefaultAsync(l => l.id == request.account_id)
+            ?? await db.agreed_holidays.FirstAsync(a => a.id == request.account_id);
+        await change_used_hours(account, -request.Hours);
+
+        await transaction.CommitAsync();
+    }
+
+    // the holiday stays approved, the declined cancellation stays in the history
+    public async Task DeclineCancellation(Guid id)
+    {
+        int updated = await db.cancellation_requests
+            .Where(c => c.id == id && c.status == RequestStatus.Pending)
+            .Set(c => c.status, RequestStatus.Rejected)
+            .Set(c => c.decided_at, DateTime.UtcNow)
+            .UpdateAsync();
+        if (updated == 0)
+        {
+            throw new RequestStateException("This cancellation request does not exist or was already handled.");
+        }
+    }
+
+    // + hours when a holiday is approved, - hours when it is cancelled
+    private async Task change_used_hours(HolidayAccount account, decimal hours)
+    {
+        if (account.holiday_type == HolidayType.FerieEfterFerieloven)
+        {
+            await db.law_holidays.Where(l => l.id == account.id)
+                .Set(l => l.used_holiday_hours, l => l.used_holiday_hours + hours)
+                .UpdateAsync();
+        }
+        else
+        {
+            await db.agreed_holidays.Where(a => a.id == account.id)
+                .Set(a => a.used_holiday_hours, a => a.used_holiday_hours + hours)
+                .UpdateAsync();
+        }
+    }
 }

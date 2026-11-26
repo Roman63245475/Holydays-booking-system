@@ -711,3 +711,87 @@ button:disabled:hover{
   width: 100px;
   text-align: center;
 }
+
+/* approved holiday in the employee's Approved Holidays tab (green instead of the yellow pending badge) */
+.ongoing-requests__status--approved {
+  color: #bbf7d0;
+  background: rgb(16 185 129 / 0.12);
+  border-color: rgb(16 185 129 / 0.25);
+}
+
+.ongoing-requests__status--approved .ongoing-requests__status-dot {
+  background: #34d399;
+}
+
+/* "Main holiday" label next to the holiday type */
+.ongoing-requests__tag {
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  color: #bfdbfe;
+  background: rgb(59 130 246 / 0.14);
+  border: 1px solid rgb(96 165 250 / 0.25);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* edit request / cancel holiday dialogs */
+.request-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(460px, 90vw);
+  padding: 16px;
+  text-align: left;
+}
+
+.request-dialog h1 {
+  margin: 0;
+}
+
+.request-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.request-dialog__hint {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.request-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.request-dialog__confirm p {
+  margin: 0 0 8px;
+}
+
+/* main holiday reminder on the employee's home page */
+.main-holiday-notice {
+  max-width: 900px;
+  padding: 12px 16px;
+  color: #fde68a;
+  background: rgb(245 158 11 / 0.1);
+  border: 1px solid rgb(245 158 11 / 0.3);
+  border-radius: 10px;
+}
+
+.main-holiday-notice--ok {
+  color: #bbf7d0;
+  background: rgb(16 185 129 / 0.1);
+  border-color: rgb(16 185 129 / 0.3);
+}
+
+/* the accountant's request lists */
+.request-section-title {
+  margin: 24px 0 8px;
+}
+
+.request-reason {
+  color: #cbd5e1;
+  font-style: italic;
+}

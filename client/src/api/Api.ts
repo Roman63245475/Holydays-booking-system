@@ -409,6 +409,275 @@ export class RequestClient {
         }
         return Promise.resolve<FileResponse>(null as any);
     }
+
+    editRequest(id: string, dto: EditRequestDTO): Promise<HolidayRequest> {
+        let url_ = this.baseUrl + "/request/{id}/edit";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(dto);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEditRequest(_response);
+        });
+    }
+
+    protected processEditRequest(response: Response): Promise<HolidayRequest> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as HolidayRequest;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<HolidayRequest>(null as any);
+    }
+
+    withdrawRequest(id: string): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/request/{id}/withdraw";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processWithdrawRequest(_response);
+        });
+    }
+
+    protected processWithdrawRequest(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
+    getApprovedRequests(): Promise<OngoingHolidayRequest[]> {
+        let url_ = this.baseUrl + "/request/approved";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetApprovedRequests(_response);
+        });
+    }
+
+    protected processGetApprovedRequests(response: Response): Promise<OngoingHolidayRequest[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as OngoingHolidayRequest[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<OngoingHolidayRequest[]>(null as any);
+    }
+
+    cancelApprovedRequest(id: string, dto: CancelRequestDTO): Promise<HolidayCancellationRequest> {
+        let url_ = this.baseUrl + "/request/{id}/cancel";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(dto);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCancelApprovedRequest(_response);
+        });
+    }
+
+    protected processCancelApprovedRequest(response: Response): Promise<HolidayCancellationRequest> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as HolidayCancellationRequest;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<HolidayCancellationRequest>(null as any);
+    }
+
+    getCancellationRequests(): Promise<CancellationRequestView[]> {
+        let url_ = this.baseUrl + "/requests/getCancellationRequests";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetCancellationRequests(_response);
+        });
+    }
+
+    protected processGetCancellationRequests(response: Response): Promise<CancellationRequestView[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as CancellationRequestView[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CancellationRequestView[]>(null as any);
+    }
+
+    acceptCancellation(id: string): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/requests/acceptCancellation/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAcceptCancellation(_response);
+        });
+    }
+
+    protected processAcceptCancellation(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
+    declineCancellation(id: string): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/requests/declineCancellation/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processDeclineCancellation(_response);
+        });
+    }
+
+    protected processDeclineCancellation(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
 }
 
 export class RuleSetClient {
@@ -832,12 +1101,18 @@ export interface HolidayRequest {
     account_id?: string;
     created_at?: Date;
     requestStatus?: RequestStatus;
+    is_main_holiday?: boolean;
+    updated_at?: Date | undefined;
+    decided_at?: Date | undefined;
+    replaces_request_id?: string | undefined;
 }
 
 export enum RequestStatus {
     Accepted = 0,
     Rejected = 1,
     Pending = 2,
+    Cancelled = 3,
+    Withdrawn = 4,
 }
 
 export interface RequestDTO {
@@ -858,6 +1133,9 @@ export interface OngoingHolidayRequest {
     createdAt?: Date;
     holidayKind?: string;
     requestStatus?: RequestStatus;
+    isMainHoliday?: boolean;
+    hasPendingCancellation?: boolean;
+    started?: boolean;
 }
 
 export interface HolidayRequestUser {
@@ -865,6 +1143,8 @@ export interface HolidayRequestUser {
     name?: string;
     startDate?: string;
     endDate?: string;
+    hours?: number;
+    isMainHoliday?: boolean;
     status?: RequestStatus;
     holidayType?: HolidayType;
 }
@@ -872,6 +1152,37 @@ export interface HolidayRequestUser {
 export enum HolidayType {
     FerieEfterFerieloven = 1,
     FerieUge = 2,
+}
+
+export interface EditRequestDTO {
+    startDate?: string;
+    endDate?: string;
+}
+
+export interface HolidayCancellationRequest {
+    id?: string;
+    holiday_request_id?: string;
+    user_id?: string;
+    reason?: string | undefined;
+    status?: RequestStatus;
+    created_at?: Date;
+    decided_at?: Date | undefined;
+}
+
+export interface CancelRequestDTO {
+    reason?: string | undefined;
+}
+
+export interface CancellationRequestView {
+    id?: string;
+    holidayRequestId?: string;
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+    hours?: number;
+    holidayType?: HolidayType;
+    reason?: string | undefined;
+    createdAt?: Date;
 }
 
 export interface RuleSetDTO {
@@ -941,6 +1252,12 @@ export interface UserViewPage {
     name?: string;
     email?: string;
     accounts?: HolidayAccountView[];
+    main_holiday_year?: number;
+    main_holiday_window_start?: Date;
+    main_holiday_window_end?: Date;
+    main_holiday_length_days?: number;
+    main_holiday_notice_months?: number;
+    main_holiday_status?: string;
 }
 
 export interface HolidayAccountView {
