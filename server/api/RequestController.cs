@@ -212,9 +212,10 @@ public class RequestController : ControllerBase
     {
         var error = ValidateUser(Role.Accountant);
         if (error != null) return error;
+        TryGetUserId(out Guid accountantId);
         try
         {
-            await requestService.AcceptCancellation(id);
+            await requestService.AcceptCancellation(id, accountantId);
             return Ok();
         }
         catch (RequestStateException e)
@@ -228,15 +229,65 @@ public class RequestController : ControllerBase
     {
         var error = ValidateUser(Role.Accountant);
         if (error != null) return error;
+        TryGetUserId(out Guid accountantId);
         try
         {
-            await requestService.DeclineCancellation(id);
+            await requestService.DeclineCancellation(id, accountantId);
             return Ok();
         }
         catch (RequestStateException e)
         {
             return Conflict(e.Message);
         }
+    }
+
+    // approved holidays of all employees that are not over yet (accountant)
+    [HttpGet("requests/getApprovedRequests")]
+    public async Task<ActionResult<List<ApprovedHolidayView>>> GetAllApprovedRequests()
+    {
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
+        return Ok(await requestService.GetAllApprovedRequests());
+    }
+
+    // the accountant cancels an approved holiday on the employer's decision. returns whether a pending cancellation
+    // request of the employee was approved instead (then no employer reason was needed)
+    [HttpPost("requests/employerCancel/{id}")]
+    public async Task<ActionResult<EmployerCancelResult>> EmployerCancel([FromRoute] Guid id, [FromBody] EmployerCancelDTO dto)
+    {
+        var error = ValidateUser(Role.Accountant);
+        if (error != null) return error;
+        if (dto.Reason != null && dto.Reason.Length > 500)
+        {
+            return BadRequest("The reason can be at most 500 characters long.");
+        }
+        TryGetUserId(out Guid accountantId);
+
+        try
+        {
+            bool employee_request = await requestService.EmployerCancel(id, accountantId, dto.Reason, dto.Confirmed);
+            return Ok(new EmployerCancelResult { EmployeeRequestApproved = employee_request });
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (ArgumentException e)
+        {
+            return BadRequest(e.Message);
+        }
+        catch (RequestStateException e)
+        {
+            return Conflict(e.Message);
+        }
+    }
+
+    // holidays of the logged in user that the accountant cancelled on the employer's decision
+    [HttpGet("request/cancelledByEmployer")]
+    public async Task<ActionResult<List<CancelledHolidayView>>> GetCancelledByEmployer()
+    {
+        if (!TryGetUserId(out Guid userId)) return Unauthorized("Not logged in");
+        return Ok(await requestService.GetCancelledByEmployer(userId));
     }
 
     private bool TryGetUserId(out Guid userId)

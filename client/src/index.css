@@ -795,3 +795,38 @@ button:disabled:hover{
   color: #cbd5e1;
   font-style: italic;
 }
+
+/* checkbox with a long text in a dialog (employer cancellation confirmation) */
+.request-dialog .request-dialog__checkbox {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.request-dialog__checkbox input {
+  margin-top: 4px;
+}
+
+/* employee: approved holidays the accountant cancelled */
+.cancelled-by-employer {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: rgb(239 68 68 / 0.08);
+  border: 1px solid rgb(248 113 113 / 0.25);
+  border-radius: 10px;
+}
+
+.cancelled-by-employer h3 {
+  margin: 0;
+  color: #fecaca;
+}
+
+.cancelled-by-employer ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.cancelled-by-employer li {
+  margin: 0.35rem 0;
+  color: #e2e8f0;
+}

@@ -1,54 +1,81 @@
-import {useState} from "react";
-import {DesConfirmation} from "@/dialog/DesConfirmation.tsx";
+import {useEffect, useState} from "react";
 import {RescheduleMenu} from "@/dialog/RescheduleMenu.tsx";
-import {IllnessMenu} from "@/dialog/IllnessMenu.tsx";
+import {EmployerCancelDialog} from "@/dialog/EmployerCancelDialog.tsx";
+import {requestApi} from "@/api/client.ts";
+import {errorText} from "@/api/errors.ts";
+import {type ApprovedHolidayView, HolidayType} from "@/api/Api.ts";
 
+// approved holidays of all employees that are not over yet, of the chosen account type.
+// the accountant can cancel one that has not started (employer's decision, or approving the employee's request).
+// Reschedule is still a placeholder
 export function ApprovedTab(){
 
     const [week6Active, setWeek6Active] = useState(false)
-    const [activeMenu, setActiveMenu] = useState<string | null>(null)
+    const [holidays, setHolidays] = useState<ApprovedHolidayView[]>([])
+    const [cancelling, setCancelling] = useState<ApprovedHolidayView | null>(null)
+    const [rescheduleOpen, setRescheduleOpen] = useState<string | null>(null)
+    const [message, setMessage] = useState<{ text: string, error: boolean } | null>(null)
 
-    const renderContent = () => {
-        switch(activeMenu){
-            case 'reschedule':
-                return <RescheduleMenu setMenuOpen={setActiveMenu} />
-            case 'illness':
-                return <IllnessMenu setMenuOpen={setActiveMenu} />
-            case 'destruct':
-                return <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to cancel this user's holiday?"} onConfirm={cancelApproved}/>
-            default:
-                return null
+    const targetKind = week6Active ? HolidayType.FerieUge : HolidayType.FerieEfterFerieloven;
+    const filtered = holidays.filter((h) => h.holidayType === targetKind)
+
+    useEffect(() => {
+        load();
+    }, [])
+
+    async function load() {
+        try {
+            setHolidays(await requestApi.getAllApprovedRequests())
+        } catch (err) {
+            setMessage({text: errorText(err, "Could not load the approved holidays."), error: true})
         }
     }
 
-    async function cancelApproved(){
-
+    async function cancelled(text: string) {
+        setMessage({text, error: false})
+        await load()
     }
 
     return(
         <div className={"flex center-v p-16"}>
-            {
-                renderContent()
-            }
+            {cancelling && <EmployerCancelDialog holiday={cancelling} onClose={() => setCancelling(null)} onDone={cancelled}/>}
+            {rescheduleOpen && <RescheduleMenu setMenuOpen={setRescheduleOpen}/>}
             <h1>Approved Holidays for {week6Active ? 'Week 6' : 'Week 1-5'}</h1>
             <div className={"flex table-border table-tools"}>
                 <button onClick={() => setWeek6Active(true)}>Week 6</button>
                 <button onClick={() => setWeek6Active(false)}>Week 1-5</button>
             </div>
+            {message && <p className={message.error ? "error" : "success"}>{message.text}</p>}
             <div className={"flex direction-column table-border p-16 g-20"}>
-                <div className={'flex p-16 shadow space-between'}>
-                    <div>
-                        <h1>Title</h1>
-                        <p>Approved date: date</p>
-                        <p>Employee Name: name</p>
-                        <p>Holiday duration: duration</p>
-                    </div>
-                    <div className={"flex center-v g-10"}>
-                        <button onClick={() => setActiveMenu('reschedule')} className={"w-100 btn-warning"}>Reschedule</button>
-                        {/*<button onClick={() => setActiveMenu('illness')} className={"w-100 btn-info"}>Register Illness</button>*/}
-                        <button onClick={() => setActiveMenu('destruct')} className={"w-100 btn-destructive-outline"}>Cancel Holiday</button>
-                    </div>
-                </div>
+                {filtered.length === 0 && <p>No approved holidays coming up.</p>}
+                {
+                    filtered.map((h) => (
+                        <div key={h.id} className={'flex p-16 shadow space-between'}>
+                            <div>
+                                <h1>Name: {h.name}</h1>
+                                <p>Holiday: {h.startDate} to {h.endDate}</p>
+                                <p>
+                                    Hours: {h.hours?.toFixed(2)} h
+                                    {h.isMainHoliday && <span className={"ongoing-requests__tag"}>Main holiday</span>}
+                                    {h.started && <span className={"ongoing-requests__tag"}>In progress</span>}
+                                </p>
+                                {h.hasPendingCancellation && (
+                                    <p className={"request-reason"}>
+                                        The employee asked to cancel it{h.pendingCancellationReason ? `: ${h.pendingCancellationReason}` : ""}
+                                    </p>
+                                )}
+                            </div>
+                            <div className={"flex center-v g-10"}>
+                                <button onClick={() => setRescheduleOpen('reschedule')} className={"w-100 btn-warning"}>Reschedule</button>
+                                <button onClick={() => setCancelling(h)} className={"w-100 btn-destructive-outline"}
+                                        disabled={h.started}
+                                        title={h.started ? "A holiday that has started can not be cancelled" : undefined}>
+                                    Cancel Holiday
+                                </button>
+                            </div>
+                        </div>
+                    ))
+                }
             </div>
         </div>
     )

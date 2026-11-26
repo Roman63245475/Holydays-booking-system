@@ -1,21 +1,28 @@
 import { useEffect, useState } from "react";
 import { requestApi } from "./api/client";
-import type { OngoingHolidayRequest } from "./api/Api";
+import type { CancelledHolidayView, OngoingHolidayRequest } from "./api/Api";
 import { errorText } from "./api/errors";
 import { CancelHolidayDialog } from "./dialog/CancelHolidayDialog";
 import { formatHours, holidayKindLabel } from "./requestFormat";
 
 // approved holidays of the employee that are not over yet. an approved holiday can only be cancelled by a
-// cancellation request to the accountant, and only before it starts
+// cancellation request to the accountant, and only before it starts.
+// below: planned holidays the accountant cancelled on the employer's decision, with the reason
 export function ApprovedRequests() {
     const [requests, setRequests] = useState<OngoingHolidayRequest[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [cancelling, setCancelling] = useState<OngoingHolidayRequest | null>(null);
+    const [cancelledByEmployer, setCancelledByEmployer] = useState<CancelledHolidayView[]>([]);
 
     async function load() {
         try {
-            setRequests((await requestApi.getApprovedRequests()) ?? []);
+            const [approved, cancelled] = await Promise.all([
+                requestApi.getApprovedRequests(),
+                requestApi.getCancelledByEmployer()
+            ]);
+            setRequests(approved ?? []);
+            setCancelledByEmployer(cancelled ?? []);
             setError(null);
         } catch (reason) {
             setError(errorText(reason, "Could not load your approved holidays."));
@@ -96,6 +103,21 @@ export function ApprovedRequests() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {cancelledByEmployer.length > 0 && (
+                <div className="cancelled-by-employer">
+                    <h3>Cancelled by the accountant</h3>
+                    <p className="ongoing-requests__subtitle">These approved holidays were cancelled by the company. The hours were returned to your balance.</p>
+                    <ul>
+                        {cancelledByEmployer.map(c => (
+                            <li key={c.id}>
+                                <strong>{c.startDate} to {c.endDate}</strong> ({holidayKindLabel({ holidayKind: c.holidayKind })}, {formatHours(c.hours)})
+                                <span className="request-reason"> Reason: {c.reason}</span>
+                            </li>
+                        ))}
+                    </ul>
                 </div>
             )}
         </section>

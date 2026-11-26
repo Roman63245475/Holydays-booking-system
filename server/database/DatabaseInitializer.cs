@@ -97,6 +97,23 @@ public class DatabaseInitializer
                 END IF;
             END $$;"
         );
+        // who started the cancellation (1 = employee, 2 = employer) and which accountant decided.
+        // existing rows were all asked by employees, so the default is 1
+        db.Execute(@"
+            ALTER TABLE holiday_cancellation_request
+                ADD COLUMN IF NOT EXISTS initiated_by integer NOT NULL DEFAULT 1,
+                ADD COLUMN IF NOT EXISTS decided_by uuid NULL"
+        );
+        db.Execute(@"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_cancellation_request_decided_by') THEN
+                    ALTER TABLE holiday_cancellation_request
+                        ADD CONSTRAINT fk_cancellation_request_decided_by
+                        FOREIGN KEY (decided_by) REFERENCES users(id) ON DELETE SET NULL;
+                END IF;
+            END $$;"
+        );
         // at most one PENDING cancellation per holiday (status 2 = RequestStatus.Pending),
         // declined and approved ones stay in the history
         db.Execute(

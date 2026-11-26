@@ -678,6 +678,112 @@ export class RequestClient {
         }
         return Promise.resolve<FileResponse>(null as any);
     }
+
+    getAllApprovedRequests(): Promise<ApprovedHolidayView[]> {
+        let url_ = this.baseUrl + "/requests/getApprovedRequests";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetAllApprovedRequests(_response);
+        });
+    }
+
+    protected processGetAllApprovedRequests(response: Response): Promise<ApprovedHolidayView[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ApprovedHolidayView[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ApprovedHolidayView[]>(null as any);
+    }
+
+    employerCancel(id: string, dto: EmployerCancelDTO): Promise<EmployerCancelResult> {
+        let url_ = this.baseUrl + "/requests/employerCancel/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(dto);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processEmployerCancel(_response);
+        });
+    }
+
+    protected processEmployerCancel(response: Response): Promise<EmployerCancelResult> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EmployerCancelResult;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EmployerCancelResult>(null as any);
+    }
+
+    getCancelledByEmployer(): Promise<CancelledHolidayView[]> {
+        let url_ = this.baseUrl + "/request/cancelledByEmployer";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetCancelledByEmployer(_response);
+        });
+    }
+
+    protected processGetCancelledByEmployer(response: Response): Promise<CancelledHolidayView[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as CancelledHolidayView[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CancelledHolidayView[]>(null as any);
+    }
 }
 
 export class RuleSetClient {
@@ -1167,6 +1273,13 @@ export interface HolidayCancellationRequest {
     status?: RequestStatus;
     created_at?: Date;
     decided_at?: Date | undefined;
+    initiated_by?: CancellationInitiator;
+    decided_by?: string | undefined;
+}
+
+export enum CancellationInitiator {
+    Employee = 1,
+    Employer = 2,
 }
 
 export interface CancelRequestDTO {
@@ -1183,6 +1296,38 @@ export interface CancellationRequestView {
     holidayType?: HolidayType;
     reason?: string | undefined;
     createdAt?: Date;
+}
+
+export interface ApprovedHolidayView {
+    id?: string;
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+    hours?: number;
+    holidayType?: HolidayType;
+    isMainHoliday?: boolean;
+    started?: boolean;
+    hasPendingCancellation?: boolean;
+    pendingCancellationReason?: string | undefined;
+}
+
+export interface EmployerCancelResult {
+    employeeRequestApproved?: boolean;
+}
+
+export interface EmployerCancelDTO {
+    reason?: string | undefined;
+    confirmed?: boolean;
+}
+
+export interface CancelledHolidayView {
+    id?: string;
+    startDate?: string;
+    endDate?: string;
+    hours?: number;
+    holidayKind?: string;
+    reason?: string | undefined;
+    cancelledAt?: Date;
 }
 
 export interface RuleSetDTO {

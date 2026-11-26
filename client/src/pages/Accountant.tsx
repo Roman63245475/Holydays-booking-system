@@ -11,6 +11,7 @@ import storage from "@/storage.tsx";
 import {RequestsTab} from "@/tabs/accountant/RequestsTab.tsx";
 import {ApprovedTab} from "@/tabs/accountant/ApprovedTab.tsx";
 import {BalanceTab} from "@/tabs/accountant/BalanceTab.tsx";
+import {CancellationRequestsTab} from "@/tabs/accountant/CancellationRequestsTab.tsx";
 
 export function Accountant(){
 
@@ -30,6 +31,8 @@ export function Accountant(){
 
     const renderContent = () => {
         switch(activeTab){
+            case 'cancellations':
+                return <CancellationRequestsTab />
             case 'approved':
                 return <ApprovedTab />
             case 'balances':
@@ -58,6 +61,7 @@ export function Accountant(){
                 <p>Welcome {name}</p>
                 <div className={"flex center-v"}>
                     <button onClick={() => setActiveTab('requests')}>Pending Requests <span className={"icon pending-icon"} /></button>
+                    <button onClick={() => setActiveTab('cancellations')}>Cancellation Requests <span className={"icon pending-icon"} /></button>
                     <button onClick={() => setActiveTab('approved')}>Approved Holidays <span className={"icon approved-icon"} /></button>
                     <button onClick={() => setActiveTab('balances')}>Employee Balances <span className={"icon balance-icon"} /></button>
                 </div>

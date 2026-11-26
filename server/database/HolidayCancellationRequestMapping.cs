@@ -15,5 +15,7 @@ public class HolidayCancellationRequestMapping
         builder.Entity<HolidayCancellationRequest>().Property(x => x.status).HasColumnName("status").IsNullable(false);
         builder.Entity<HolidayCancellationRequest>().Property(x => x.created_at).HasColumnName("created_at").IsNullable(false);
         builder.Entity<HolidayCancellationRequest>().Property(x => x.decided_at).HasColumnName("decided_at").IsNullable(true);
+        builder.Entity<HolidayCancellationRequest>().Property(x => x.initiated_by).HasColumnName("initiated_by").IsNullable(false);
+        builder.Entity<HolidayCancellationRequest>().Property(x => x.decided_by).HasColumnName("decided_by").HasDbType("uuid").IsNullable(true);
     }
 }
