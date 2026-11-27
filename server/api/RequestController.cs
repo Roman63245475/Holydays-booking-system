@@ -69,6 +69,19 @@ public class RequestController : ControllerBase
         }
     }
 
+    // what a request would cost and whether it can be sent (the request form, before Send). nothing is saved
+    [HttpPost("request/preview")]
+    public async Task<ActionResult<RequestPreview>> PreviewRequest([FromBody] RequestDTO requestDTO)
+    {
+        if (!TryGetUserId(out Guid userId)) return Unauthorized("Not logged in");
+        if (requestDTO == null || requestDTO.account_id == Guid.Empty
+                               || !TryParseDates(requestDTO.StartDate, requestDTO.EndDate, out DateOnly start, out DateOnly end))
+        {
+            return BadRequest("A valid account and dates are required.");
+        }
+        return Ok(await requestService.PreviewRequest(userId, requestDTO.account_id, start, end));
+    }
+
     [HttpGet("request/ongoing")]
     public async Task<ActionResult<List<OngoingHolidayRequest>>> GetOngoingRequests()
     {
@@ -337,11 +350,12 @@ public class RequestController : ControllerBase
         return Ok(await requestService.GetHistory(userId));
     }
 
-    // the holiday history of any user, for the system owner's user page
+    // the holiday history of any user, for the user page of the system owner and the accountant
     [HttpGet("requests/history/{userId}")]
     public async Task<ActionResult<List<HolidayHistoryView>>> GetUserHistory([FromRoute] Guid userId)
     {
         var error = ValidateUser(Role.Admin);
+        if (error != null) error = ValidateUser(Role.Accountant);
         if (error != null) return error;
         return Ok(await requestService.GetHistory(userId));
     }

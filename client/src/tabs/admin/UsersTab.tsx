@@ -4,10 +4,7 @@ import {CreateUser} from "@/dialog/CreateUser.tsx";
 import {userApi} from "../../api/client.ts"
 import {useEffect} from "react";
 import {Role, type ClientUser} from "../../api/Api.ts";
-import {errorText} from "@/api/errors.ts";
-import {RescheduleMenu} from "@/dialog/RescheduleMenu.tsx";
 import {LeavingDialog} from "@/dialog/LeavingDialog.tsx";
-import {DesConfirmation} from "@/dialog/DesConfirmation.tsx";
 import {useNavigate} from "react-router";
 
 function formatDate(value?: Date | string): string {
@@ -17,7 +14,10 @@ function formatDate(value?: Date | string): string {
     return date.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-function UsersTab(){
+// admin: every user, create / edit / leaving. accountant: only employees, and only Edit (their data and working
+// schedule). both open an employee's page (accounts, balances, history) with a double-click
+function UsersTab({mode = "admin"}: {mode?: "admin" | "accountant"}){
+    const isAdmin = mode === "admin";
 
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const [selectedUser, setSelectedUser] = useState<ClientUser | null>(null);
@@ -31,13 +31,12 @@ function UsersTab(){
     const renderContent = () => {
         switch(activeMenu){
             case 'create':
-                return <CreateUser setMenuOpen={setActiveMenu} submitted={loadUsers} user={null} setUser={setSelectedUser}/>
+                return <CreateUser setMenuOpen={setActiveMenu} submitted={loadUsers} user={null} setUser={setSelectedUser}
+                                   existingRoles={users.map(u => u.role).filter((r): r is Role => r !== undefined)}/>
             case 'edit':
                 return <CreateUser setMenuOpen={setActiveMenu} submitted={loadUsers} user={selectedUser} setUser={setSelectedUser}/>
             case 'leaving':
                 return selectedUser && <LeavingDialog user={selectedUser} onClose={() => setActiveMenu(null)} onSaved={loadUsers}/>
-            case 'delete':
-                return <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to delete " + selectedUser?.name + "? All their holiday accounts, history and requests will be removed."} onConfirm={deleteUser}/>
             default:
                 return null
         }
@@ -45,32 +44,28 @@ function UsersTab(){
 
     async function loadUsers(){
         const response: ClientUser[] = await userApi.get_all_users();
-        setUsers(response);
+        // the accountant only works with employees, the role accounts are the system owner's business
+        setUsers(isAdmin ? response : response.filter(u => u.role === Role.User));
     }
 
-    async function deleteUser(){
-        if (!selectedUser?.id) return;
-        try {
-            await userApi.delete_user(selectedUser.id);
-        } catch (err) {
-            // e.g. "You can not delete yourself"
-            window.alert(errorText(err, "Could not delete the user"));
-        }
-        setSelectedUser(null);
-        await loadUsers();
-    }
 
     return(
         <div className={"flex center-v p-16"}>
             {
                 renderContent()
             }
-            <h1>User Management</h1>
-            <p className={"users-table__hint"}>Double-click a user to see their holiday accounts and history.</p>
+            <h1>{isAdmin ? "User Management" : "Employees"}</h1>
+            <p className={"users-table__hint"}>
+                {isAdmin
+                    ? "Double-click an employee to see their holiday accounts and history. Users are never deleted (the history must be kept): an employee who leaves the company gets a last working day."
+                    : "Double-click an employee to see their holiday accounts, balances and history. Edit changes their data and working schedule."}
+            </p>
             <div className={"table-border"}>
-                <div className={"table-tools"}>
-                    <button onClick={() => setActiveMenu('create')}>Create User <span className={"icon create-user-icon"} /></button>
-                </div>
+                {isAdmin && (
+                    <div className={"table-tools"}>
+                        <button onClick={() => setActiveMenu('create')}>Create User <span className={"icon create-user-icon"} /></button>
+                    </div>
+                )}
                 <table>
                     <thead>
                     <tr>
@@ -85,12 +80,13 @@ function UsersTab(){
                     <tbody>
                         {users.map((user) => (
                             <tr key={user.id}
-                                className={"users-table__row"}
-                                title={"Double-click to open the user's holiday accounts"}
+                                className={user.role === Role.User ? "users-table__row" : ""}
+                                title={user.role === Role.User ? "Double-click to open the user's holiday accounts" : "Role account, no holiday"}
                                 onDoubleClick={(e) => {
-                                    // a double-click on Edit / Delete is not a request to open the page
-                                    if ((e.target as HTMLElement).closest("button")) return;
-                                    navigate(`/admin_page/users/${user.id}`);
+                                    // a double-click on a button is not a request to open the page.
+                                    // role accounts (accountant, system owner) have no holiday to show
+                                    if ((e.target as HTMLElement).closest("button") || user.role !== Role.User) return;
+                                    navigate(isAdmin ? `/admin_page/users/${user.id}` : `/accountant/users/${user.id}`);
                                 }}>
                                 <td>{user.name}</td>
                                 <td>{user.email}</td>
@@ -102,16 +98,13 @@ function UsersTab(){
                                         setSelectedUser(user)
                                         setActiveMenu('edit')
                                     }}>Edit</button>
-                                    {user.role !== Role.Admin && (
+                                    {/* only employees can leave the company, role accounts are handed over (Edit) */}
+                                    {isAdmin && user.role === Role.User && (
                                         <button onClick={() => {
                                             setSelectedUser(user)
                                             setActiveMenu('leaving')
                                         }}>Leaving</button>
                                     )}
-                                    <button onClick={() => {
-                                        setSelectedUser(user)
-                                        setActiveMenu('delete')
-                                    }}>Delete</button>
                                 </td>
                             </tr>
                         ))}

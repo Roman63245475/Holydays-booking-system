@@ -11,6 +11,10 @@ public class RuleSet
     // the rules apply from this date (always the 1st of a month) until the effective_from of the next rule set
     public DateOnly effective_from { get; set; }
 
+    // the preset these rules are exactly equal to (RuleSetPresets), or "Custom" if any value differs from every preset.
+    // set by the server when the rule set is saved, never sent by the client
+    public string? preset { get; set; }
+
     // --- weeks 1-5 (Ferieloven -> LawHolidays) ---
     // holiday DAYS earned per month (2.08), converted to hours with the employee's schedule
     public decimal weeks1to5_month_rate { get; set; }

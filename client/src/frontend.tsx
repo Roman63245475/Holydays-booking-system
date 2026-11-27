@@ -7,7 +7,6 @@
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App";
 import {createBrowserRouter, RouterProvider} from "react-router";
 import LogInForm from "@/pages/LogInForm.tsx";
 import {Admin} from "@/pages/Admin.tsx";
@@ -37,6 +36,10 @@ const app = (
         {
             path: '/accountant',
             element: <Accountant />
+        },
+        {
+          path: '/accountant/users/:id',
+          element: <UserDetails/>
         }
     ])}/>
 );

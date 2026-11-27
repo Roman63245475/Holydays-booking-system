@@ -71,7 +71,8 @@ public class AccountStatusService
     public async Task<List<EmployeeBalanceRow>> get_overview()
     {
         DateOnly today = await currentDateService.get_current_date();
-        List<User> users = await db.users.ToListAsync();
+        // only employees have holiday, the accountant and system owner are role accounts
+        List<User> users = await db.users.Where(u => u.role == Role.User).ToListAsync();
         return (await build(users, today, include_expired: true))
             .OrderBy(r => r.name)
             .ThenBy(r => r.account.holiday_type)

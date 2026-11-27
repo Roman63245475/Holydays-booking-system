@@ -65,6 +65,9 @@ export function RequestsTab(){
                                 <h1>Name: {r.name}</h1>
                                 <p>Holiday: {r.startDate} to {r.endDate}</p>
                                 <p>Hours: {r.hours?.toFixed(2)} h {r.isMainHoliday && <span className={"ongoing-requests__tag"}>Main holiday</span>}</p>
+                                {r.isShortBlock && (
+                                    <p className={"request-reason"}>Shorter than 5 days: blocks of at least 5 days are recommended (allowed anyway).</p>
+                                )}
                             </div>
                             <div className={'flex g-10 center-v'}>
                                 <button onClick={() => acceptRequest(r.id as string)} className={'request-button'}>Approve</button>

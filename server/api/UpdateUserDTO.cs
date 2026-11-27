@@ -10,8 +10,9 @@ public class UpdateUserDTO
     public string email { get; set; }
     public string? password { get; set; }
     public Role role { get; set; }
-    // the working schedule from the form. if it differs from the current one, a new schedule period is started
-    public ScheduleDTO schedule { get; set; }
+    // the working schedule from the form (employees only, required for them). if it differs from the current one,
+    // a new schedule period is started. null for the accountant / system owner accounts
+    public ScheduleDTO? schedule { get; set; }
 
     public UpdateUserDTO()
     {
@@ -32,10 +33,10 @@ public class UpdateUserDTO
         {
             return "role is not valid";
         }
-        if (schedule == null)
+        if (role == Role.User && schedule == null)
         {
             return "schedule is required";
         }
-        return schedule.validate();
+        return schedule?.validate();
     }
 }

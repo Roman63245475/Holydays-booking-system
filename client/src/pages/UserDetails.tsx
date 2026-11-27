@@ -52,10 +52,13 @@ export function UserDetails() {
     }, [id, navigate]);
 
     const page = user?.page;
+    // the system owner and the accountant both open this page from their Users tab
+    const viewer = JSON.parse(localStorage.getItem("user") ?? "{}") as { role?: Role };
+    const backTo = viewer.role === Role.Accountant ? "/accountant?tab=users" : "/admin_page";
 
     return (
         <div className="user-details">
-            <button type="button" className="user-details__back" onClick={() => navigate("/admin_page")}>‹ Back to users</button>
+            <button type="button" className="user-details__back" onClick={() => navigate(backTo)}>‹ Back to users</button>
 
             {error ? (
                 <p className="ongoing-requests__message ongoing-requests__message--error" role="alert">{error}</p>

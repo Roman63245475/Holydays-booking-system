@@ -1,11 +1,7 @@
 import "../index.css";
 import {useEffect, useState} from "react";
-import {EarningsTab} from "@/tabs/admin/EarningsTab.tsx";
-import UsersTab from "@/tabs/admin/UsersTab.tsx";
-import {ScheduleTab} from "@/tabs/admin/ScheduleTab.tsx";
 import {HolidayCalendar} from "@/HolidayCalendar.tsx";
-import {ActivityTab} from "@/tabs/admin/ActivityTab.tsx";
-import {useNavigate} from "react-router";
+import {useNavigate, useSearchParams} from "react-router";
 import {loginApi, timeApi} from "@/api/client.ts";
 import storage from "@/storage.tsx";
 import {RequestsTab} from "@/tabs/accountant/RequestsTab.tsx";
@@ -13,11 +9,14 @@ import {ApprovedTab} from "@/tabs/accountant/ApprovedTab.tsx";
 import {BalanceTab} from "@/tabs/accountant/BalanceTab.tsx";
 import {CancellationRequestsTab} from "@/tabs/accountant/CancellationRequestsTab.tsx";
 import {TransferRequestsTab} from "@/tabs/accountant/TransferRequestsTab.tsx";
+import UsersTab from "@/tabs/admin/UsersTab.tsx";
 
 export function Accountant(){
 
     const [name, setName] = useState("");
-    const [activeTab, setActiveTab] = useState('requests')
+    // ?tab=users: "Back" from an employee's page returns to the Users tab
+    const [searchParams] = useSearchParams()
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') ?? 'requests')
     // changes on every menu click: the tab is mounted again and reloads its data, also when it is already open
     // (otherwise new requests only appear after switching to another tab and back)
     const [reloadKey, setReloadKey] = useState(0)
@@ -50,6 +49,8 @@ export function Accountant(){
                 return <HolidayCalendar title="Holiday Calendar" />
             case 'balances':
                 return <BalanceTab />
+            case 'users':
+                return <UsersTab mode="accountant" />
             default:
                 return <RequestsTab />
         }
@@ -79,6 +80,7 @@ export function Accountant(){
                     <button onClick={() => openTab('approved')}>Approved Holidays <span className={"icon approved-icon"} /></button>
                     <button onClick={() => openTab('calendar')}>Holiday Calendar <span className={"icon calendar-icon"} /></button>
                     <button onClick={() => openTab('balances')}>Employee Balances <span className={"icon balance-icon"} /></button>
+                    <button onClick={() => openTab('users')}>Users <span className={"icon users-icon"} /></button>
                 </div>
                 <button className={"g-6"} onClick={logOut}>Log Out <span className={"icon log-out-icon"} /></button>
             </aside>

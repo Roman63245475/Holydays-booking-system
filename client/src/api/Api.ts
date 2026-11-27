@@ -314,6 +314,43 @@ export class RequestClient {
         return Promise.resolve<HolidayRequest>(null as any);
     }
 
+    previewRequest(requestDTO: RequestDTO): Promise<RequestPreview> {
+        let url_ = this.baseUrl + "/request/preview";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(requestDTO);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processPreviewRequest(_response);
+        });
+    }
+
+    protected processPreviewRequest(response: Response): Promise<RequestPreview> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as RequestPreview;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<RequestPreview>(null as any);
+    }
+
     getOngoingRequests(): Promise<OngoingHolidayRequest[]> {
         let url_ = this.baseUrl + "/request/ongoing";
         url_ = url_.replace(/[?&]$/, "");
@@ -988,6 +1025,39 @@ export class RuleSetClient {
             });
         }
         return Promise.resolve<RuleSetDTO>(null as any);
+    }
+
+    get_presets(): Promise<RuleSetPresetDTO[]> {
+        let url_ = this.baseUrl + "/get_presets";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGet_presets(_response);
+        });
+    }
+
+    protected processGet_presets(response: Response): Promise<RuleSetPresetDTO[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as RuleSetPresetDTO[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<RuleSetPresetDTO[]>(null as any);
     }
 
     set_parameters(ruleSetDTO: RuleSetDTO): Promise<FileResponse> {
@@ -1811,6 +1881,14 @@ export interface RequestDTO {
     requestStatus?: RequestStatus;
 }
 
+export interface RequestPreview {
+    hours?: number;
+    holiday_days?: number;
+    is_main_holiday?: boolean;
+    short_block?: boolean;
+    error?: string | undefined;
+}
+
 export interface OngoingHolidayRequest {
     id?: string;
     startDate?: string;
@@ -1833,6 +1911,8 @@ export interface HolidayRequestUser {
     isMainHoliday?: boolean;
     status?: RequestStatus;
     holidayType?: HolidayType;
+    isShortBlock?: boolean;
+    userId?: string;
 }
 
 export interface EditRequestDTO {
@@ -1930,6 +2010,7 @@ export interface HolidayHistoryView {
 
 export interface RuleSetDTO {
     effective_from?: Date;
+    preset?: string | undefined;
     weeks1to5_month_rate?: number;
     weeks1to5_earning_start_month?: number;
     weeks1to5_earning_end_month?: number;
@@ -1973,6 +2054,13 @@ export interface ScheduleDTO {
     thursday_end?: string | undefined;
     friday_start?: string | undefined;
     friday_end?: string | undefined;
+}
+
+export interface RuleSetPresetDTO {
+    key?: string;
+    name?: string;
+    description?: string;
+    rules?: RuleSetDTO;
 }
 
 export interface HolidayTransferRequest {
@@ -2063,7 +2151,7 @@ export interface UpdateUserDTO {
     email?: string;
     password?: string | undefined;
     role?: Role;
-    schedule?: ScheduleDTO;
+    schedule?: ScheduleDTO | undefined;
 }
 
 export interface LeavingResult {

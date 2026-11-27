@@ -19,10 +19,12 @@ interface CreateUserProps {
     submitted: () => Promise<void>,
     setMenuOpen: (value: (((prevState: (string | null)) => (string | null)) | string | null)) => void,
     user: ClientUser | null,
-    setUser: (value: (((prevState: (ClientUser | null)) => (ClientUser | null)) | ClientUser | null)) => void
+    setUser: (value: (((prevState: (ClientUser | null)) => (ClientUser | null)) | ClientUser | null)) => void,
+    // roles of the existing users: there is only one accountant and one system owner account
+    existingRoles?: Role[]
 }
 
-export function CreateUser({submitted, setMenuOpen, user, setUser}: CreateUserProps) {
+export function CreateUser({submitted, setMenuOpen, user, setUser, existingRoles = []}: CreateUserProps) {
 
     const [name, setName] = useState(user?.name ?? '');
     const [email, setEmail] = useState(user?.email ?? '');
@@ -31,13 +33,15 @@ export function CreateUser({submitted, setMenuOpen, user, setUser}: CreateUserPr
     // prefilled with the full time week, for a part time employee the admin changes times or marks days off
     const [schedule, setSchedule] = useState<ScheduleDTO>(fullTimeSchedule);
     const [error, setError] = useState<string | null>(null);
-    // edit mode: the form is shown once the user's current schedule is loaded
-    const [loading, setLoading] = useState(user !== null);
     const isEdit = user !== null;
+    // only employees have a working schedule (and holiday). the accountant and the system owner are role accounts
+    const isEmployee = role === Role.User;
+    // edit mode: the form is shown once the employee's current schedule is loaded
+    const [loading, setLoading] = useState(isEdit && user?.role === Role.User);
 
-    // edit mode: prefill the schedule with the one the user has now
+    // edit mode: prefill the schedule with the one the employee has now
     useEffect(() => {
-        if (!user?.id) return;
+        if (!user?.id || user.role !== Role.User) return;
         userApi.get_user_schedule(user.id)
             .then(current => setSchedule(toFormSchedule(current)))
             .catch(err => setError(errorText(err, "Could not load the working schedule")))
@@ -55,10 +59,11 @@ export function CreateUser({submitted, setMenuOpen, user, setUser}: CreateUserPr
         try {
             if (isEdit && user?.id) {
                 // an empty password keeps the old one. a changed schedule starts a new schedule period on the backend
-                const changes: UpdateUserDTO = {name, email, password: password || undefined, role, schedule};
+                const changes: UpdateUserDTO = {name, email, password: password || undefined, role,
+                    schedule: isEmployee ? schedule : undefined};
                 await userApi.update_user(user.id, changes);
             } else {
-                const newUser: CreateUserDTO = {name, email, password, role, schedule};
+                const newUser: CreateUserDTO = {name, email, password, role, schedule: isEmployee ? schedule : undefined};
                 await userApi.create(newUser);
             }
             await submitted();
@@ -93,14 +98,29 @@ export function CreateUser({submitted, setMenuOpen, user, setUser}: CreateUserPr
                     </div>
                     <div>
                         <label>Role: </label>
-                        <select value={role} onChange={e => setRole(Number(e.target.value) as Role)}>
-                            {roles.map(r => <option key={r} value={r}>{Role[r]}</option>)}
+                        {/* the role can not be changed later; only one accountant and one system owner account exist */}
+                        <select value={role} disabled={isEdit} onChange={e => setRole(Number(e.target.value) as Role)}>
+                            {roles.map(r => (
+                                <option key={r} value={r} disabled={!isEdit && r !== Role.User && existingRoles.includes(r)}>
+                                    {Role[r]}{!isEdit && r !== Role.User && existingRoles.includes(r) ? " (already exists)" : ""}
+                                </option>
+                            ))}
                         </select>
                     </div>
 
-                    <h3>Working schedule</h3>
-                    {isEdit && <p>A changed schedule applies from today, the old one stays in the history. The remaining holiday is converted so the number of days stays the same.</p>}
-                    {loading ? <p>Loading schedule…</p> : <ScheduleInputs value={schedule} onChange={setSchedule}/>}
+                    {isEmployee ? (
+                        <>
+                            <h3>Working schedule</h3>
+                            {isEdit && <p>A changed schedule applies from today, the old one stays in the history. The remaining holiday is converted so the number of days stays the same.</p>}
+                            {loading ? <p>Loading schedule…</p> : <ScheduleInputs value={schedule} onChange={setSchedule}/>}
+                        </>
+                    ) : (
+                        <p className={"users-table__hint"}>
+                            {Role[role]} is a role account (a separate login), not an employee: it has no working schedule and no
+                            holiday. The person has their own employee account for that.
+                            {isEdit && " To hand the account over to another person, change its name, email and password."}
+                        </p>
+                    )}
 
                     {error && <p className={"error"}>{error}</p>}
                     <button type={'submit'} disabled={loading}>{isEdit ? 'Save' : 'Submit'}</button>

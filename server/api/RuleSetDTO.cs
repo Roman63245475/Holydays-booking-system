@@ -9,6 +9,10 @@ public class RuleSetDTO
     // the rules apply from this date, must be the 1st of a month
     public DateOnly effective_from { get; set; }
 
+    // only sent by the server: the preset these rules are, or "Custom". ignored when the admin saves rules
+    // (the server decides it, RuleSetPresets.match)
+    public string? preset { get; set; }
+
     // weeks 1-5
     public decimal weeks1to5_month_rate { get; set; }
     public int weeks1to5_earning_start_month { get; set; }
@@ -176,6 +180,7 @@ public class RuleSetDTO
         return new RuleSetDTO
         {
             effective_from = rs.effective_from,
+            preset = rs.preset,
 
             weeks1to5_month_rate = rs.weeks1to5_month_rate,
             weeks1to5_earning_start_month = rs.weeks1to5_earning_start_month,

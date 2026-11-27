@@ -1,6 +1,6 @@
 import "../index.css";
 import {useEffect, useState} from "react";
-import {type RuleSetDTO, type ScheduleDTO} from "@/api/Api.ts";
+import {type RuleSetDTO, type RuleSetPresetDTO, type ScheduleDTO} from "@/api/Api.ts";
 import {ScheduleInputs} from "@/ScheduleInputs.tsx";
 import {ruleSetApi} from "@/api/client.ts";
 import {errorText} from "@/api/errors.ts";
@@ -76,6 +76,28 @@ const groups: { legend: string, fields: FieldDef[] }[] = [
     },
 ];
 
+// one value of the form as it is compared: times "08:00:00" (API) and "08:00" (input) are the same, "" = no value
+function norm(value: unknown): unknown {
+    if (value === undefined || value === null || value === "") return null;
+    return typeof value === "string" ? value.slice(0, 5) : value;
+}
+
+// every rule value is equal (the start date and the preset name are not rules). the server decides the same way
+// when the rules are saved (RuleSetPresets.match), this is only for the label while the admin edits
+function sameRules(a: RuleSetDTO, b: RuleSetDTO): boolean {
+    const skip = new Set(["effective_from", "preset", "standard_week"]);
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)].filter(k => !skip.has(k)));
+    for (const key of keys) {
+        if (norm(a[key as keyof RuleSetDTO]) !== norm(b[key as keyof RuleSetDTO])) return false;
+    }
+    const weekA = (a.standard_week ?? {}) as Record<string, unknown>;
+    const weekB = (b.standard_week ?? {}) as Record<string, unknown>;
+    for (const key of new Set([...Object.keys(weekA), ...Object.keys(weekB)])) {
+        if (norm(weekA[key]) !== norm(weekB[key])) return false;
+    }
+    return true;
+}
+
 // 1st of the next month as "YYYY-MM-DD", the default start of new rules
 function firstOfNextMonth(): string {
     const now = new Date();
@@ -94,15 +116,31 @@ export function Parameters() {
     // the standard week as loaded, its times come back when "Day off" is unchecked
     const [loadedWeek, setLoadedWeek] = useState<ScheduleDTO | undefined>(undefined);
     const [message, setMessage] = useState<{ text: string, error: boolean } | null>(null);
+    // ready-made rule sets the form can be filled with ("Ferieloven (minimum)", ...)
+    const [presets, setPresets] = useState<RuleSetPresetDTO[]>([]);
+    const [currentPreset, setCurrentPreset] = useState<string>("");
 
     useEffect(() => {
         loadRules();
+        ruleSetApi.get_presets()
+            .then(result => setPresets(result ?? []))
+            .catch(err => setMessage({text: errorText(err, "Failed to load the presets"), error: true}));
     }, []);
+
+    // fills every rule of the form with the preset's values, the start month stays. a preset is only a starting
+    // point: changing a value afterwards makes the rules "Custom"
+    function applyPreset(key: string) {
+        const preset = presets.find(p => p.key === key);
+        if (!preset?.rules) return;
+        setRuleset(prev => prev ? {...preset.rules!, effective_from: prev.effective_from, preset: undefined} : prev);
+        setEdited(true);
+    }
 
     async function loadRules() {
         try {
             const current = await ruleSetApi.get_parameters();
             setCurrentFrom(String(current.effective_from ?? ""));
+            setCurrentPreset(current.preset ?? "");
             setLoadedWeek(current.standard_week);
             // the new rules start on the 1st of the next month by default, the admin can pick another month.
             // the generated type expects a Date, but the backend sends and reads DateOnly as a "YYYY-MM-DD" string
@@ -182,14 +220,17 @@ export function Parameters() {
         );
     }
 
+    // the preset the rules in the form are equal to right now, or Custom
+    const matched = presets.find(p => p.rules && sameRules(ruleset, p.rules));
+
     // effective_from is kept as "YYYY-MM-01" in the rule set, the two inputs show its year and month
     const [effectiveYear = new Date().getFullYear(), effectiveMonth = 1] = String(ruleset.effective_from ?? "").split("-").map(Number);
 
     return (
         <div className={"flex center-v p-16"}>
             <h1>Holiday Rules</h1>
-            <p>The form shows the rules that apply now (since {currentFrom}). A change is saved as a new rule set
-                from the chosen month, the rules of earlier months are never changed.</p>
+            <p>The form shows the rules that apply now (since {currentFrom}{currentPreset ? `, ${currentPreset}` : ""}).
+                A change is saved as a new rule set from the chosen month, the rules of earlier months are never changed.</p>
 
             <form onSubmit={handleSubmit} className={"parameters-form flex center-v g-10"}>
 
@@ -200,6 +241,18 @@ export function Parameters() {
                     </select>
                     <input required type="number" min="2000" max="9999" value={effectiveYear}
                            onChange={e => setEffectiveFrom(Number(e.target.value), effectiveMonth)}/>
+                </fieldset>
+
+                <fieldset>
+                    <legend>Preset</legend>
+                    <select value="" onChange={e => applyPreset(e.target.value)}>
+                        <option value="">Start from a preset…</option>
+                        {presets.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}
+                    </select>
+                    <p>
+                        These rules: <strong>{matched ? matched.name : "Custom"}</strong>
+                        {matched ? ` – ${matched.description}` : " – they differ from every preset."}
+                    </p>
                 </fieldset>
 
                 {groups.map(group => (

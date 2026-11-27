@@ -82,10 +82,9 @@ using (var scope = app.Services.CreateScope())
         string admin_email = builder.Configuration["ADMIN_EMAIL"] ?? "admin@be.dk";
         string admin_password = builder.Configuration["ADMIN_PASSWORD"] ?? "admin";
         DateOnly today = DateOnly.FromDateTime(DateTime.Now);
-        // the admin is an employee too, they get the company's standard working week
-        Schedule schedule = HolidayParameters.get_rule_set(today).get_standard_schedule();
+        // the system owner is a role account: no schedule and no holiday (the person has their own employee account)
         User admin = new User("System owner", admin_email, admin_password, Role.Admin, today);
-        await scope.ServiceProvider.GetRequiredService<UserService>().create_user(admin, schedule);
+        await scope.ServiceProvider.GetRequiredService<UserService>().create_user(admin, null);
     }
 }
 

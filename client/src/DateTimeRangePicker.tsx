@@ -1,7 +1,8 @@
 
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {requestApi} from "./api/client";
 import {errorText} from "./api/errors";
+import type {RequestPreview} from "./api/Api";
 
 export interface DateTimeRange {
     startDate: string;
@@ -28,6 +29,19 @@ export function DateTimeRangePicker({ accountId, onChange }: Props) {
         !isNaN(start.getTime()) &&
         !isNaN(end.getTime()) &&
         end >= start;
+
+    // what the chosen days would cost and whether they can be sent (asked again on every change of the dates)
+    const [preview, setPreview] = useState<RequestPreview | null>(null);
+    useEffect(() => {
+        setPreview(null);
+        if (!isValid) return;
+        let current = true;
+        requestApi.previewRequest({startDate: range.startDate, endDate: range.endDate, account_id: accountId})
+            .then(result => { if (current) setPreview(result); })
+            .catch(() => { if (current) setPreview(null); });
+        // a slower answer for older dates must not overwrite the newer one
+        return () => { current = false; };
+    }, [range.startDate, range.endDate, accountId, isValid]);
 
     const update = (field: keyof DateTimeRange, value: string) => {
         const updated = { ...range, [field]: value };
@@ -100,6 +114,22 @@ export function DateTimeRangePicker({ accountId, onChange }: Props) {
                 <p className="text-sm text-red-500">
                     Please select an end date on or after the start date.
                 </p>
+            )}
+
+            {isValid && preview && (
+                <div className="request-preview">
+                    <p>
+                        Costs <strong>{preview.hours?.toFixed(2)} h</strong> (≈ {preview.holiday_days} holiday days)
+                        {preview.is_main_holiday && <span className="ongoing-requests__tag">Main holiday</span>}
+                    </p>
+                    {preview.short_block && !preview.error && (
+                        <p className="balance-flag">
+                            Recommendation: holiday outside the main holiday should, if possible, be taken in blocks of
+                            at least 5 days. You can still send this request.
+                        </p>
+                    )}
+                    {preview.error && <p className="error">{preview.error}</p>}
+                </div>
             )}
 
             {isValid && (

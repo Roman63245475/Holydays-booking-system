@@ -30,6 +30,24 @@ public class RuleSetController : ControllerBase
         return Ok(RuleSetDTO.from_rule_set(rule_set));
     }
 
+    // the ready-made rule sets the admin can start from (the form is filled with them)
+    [HttpGet(nameof(get_presets))]
+    public ActionResult<List<RuleSetPresetDTO>> get_presets()
+    {
+        if (HttpContext.Session.GetString("userId") == null)
+        {
+            return Unauthorized();
+        }
+
+        return Ok(RuleSetPresets.all.Select(p => new RuleSetPresetDTO
+        {
+            key = p.key,
+            name = p.name,
+            description = p.description,
+            rules = RuleSetDTO.from_rule_set(p.create(new DateOnly(HolidayParameters.REFERENCE_YEAR, 1, 1)))
+        }).ToList());
+    }
+
     // only the system owner (Admin) defines the global holiday rules
     [HttpPost(nameof(set_parameters))]
     public async Task<IActionResult> set_parameters([FromBody] RuleSetDTO ruleSetDTO)

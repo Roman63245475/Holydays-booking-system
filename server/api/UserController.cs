@@ -36,6 +36,35 @@ public class UserController: ControllerBase
         return null;
     }
 
+    // null if the logged in user is the system owner, or the accountant and the user `id` is an employee (the
+    // accountant can see and edit employees and their working schedule, nothing else), otherwise the 401 / 403 / 404
+    private async Task<ActionResult?> require_admin_or_accountant_for_employee(Guid id, string action)
+    {
+        string? role = HttpContext.Session.GetString("role");
+        if (HttpContext.Session.GetString("userId") == null)
+        {
+            return Unauthorized();
+        }
+        if (role == Role.Admin.ToString())
+        {
+            return null;
+        }
+        if (role != Role.Accountant.ToString())
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "Only the system owner and the accountant can " + action);
+        }
+        ClientUser? target = (await userService.get_all_users()).FirstOrDefault(u => u.id == id);
+        if (target == null)
+        {
+            return NotFound("User not found");
+        }
+        if (target.role != Role.User)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "The accountant can only " + action + " of employees");
+        }
+        return null;
+    }
+
     private bool is_me(Guid id)
     {
         return HttpContext.Session.GetString("userId") == id.ToString();
@@ -45,7 +74,7 @@ public class UserController: ControllerBase
     [HttpGet("get_user_schedule/{id}")]
     public async Task<ActionResult<ScheduleDTO>> get_user_schedule([FromRoute] Guid id)
     {
-        ActionResult? error = require_admin("see working schedules");
+        ActionResult? error = await require_admin_or_accountant_for_employee(id, "see working schedules");
         if (error != null) return error;
 
         DateOnly today = await currentDateService.get_new_user_start_date();
@@ -62,7 +91,8 @@ public class UserController: ControllerBase
     [HttpPut("update_user/{id}")]
     public async Task<IActionResult> update_user([FromRoute] Guid id, [FromBody] UpdateUserDTO userDTO)
     {
-        ActionResult? auth_error = require_admin("edit users");
+        // the system owner edits every user, the accountant only employees (their data and working schedule)
+        ActionResult? auth_error = await require_admin_or_accountant_for_employee(id, "edit users");
         if (auth_error != null) return auth_error;
 
         string? error = userDTO.validate();
@@ -70,18 +100,13 @@ public class UserController: ControllerBase
         {
             return BadRequest(error);
         }
-        // the system owner can not take away their own admin role, otherwise nobody could manage users anymore
-        if (is_me(id) && userDTO.role != Role.Admin)
-        {
-            return BadRequest("You can not change your own role");
-        }
 
         // same date logic as for a new user: the real date kept inside the open (not yet accrued) month
         DateOnly schedule_date = await currentDateService.get_new_user_start_date();
         try
         {
             await userService.update_user(id, userDTO.name, userDTO.email, userDTO.password, userDTO.role,
-                userDTO.schedule.to_schedule(), schedule_date);
+                userDTO.schedule?.to_schedule(), schedule_date);
             return Ok();
         }
         catch (KeyNotFoundException e)
@@ -164,18 +189,27 @@ public class UserController: ControllerBase
             return StatusCode(StatusCodes.Status403Forbidden, "Only the system owner can create users");
         }
 
-        if (userDTO.schedule == null)
+        if (userDTO == null || !Enum.IsDefined(typeof(Role), userDTO.role))
         {
-            return BadRequest("schedule is required");
+            return BadRequest("role is not valid");
         }
 
-        string? schedule_error = userDTO.schedule.validate();
-        if (schedule_error != null)
+        // only an employee has a working schedule and holiday. the accountant and the system owner are role
+        // accounts (separate logins), the person behind them has their own employee account for their holiday
+        Schedule? schedule = null;
+        if (userDTO.role == Role.User)
         {
-            return BadRequest(schedule_error);
+            if (userDTO.schedule == null)
+            {
+                return BadRequest("schedule is required");
+            }
+            string? schedule_error = userDTO.schedule.validate();
+            if (schedule_error != null)
+            {
+                return BadRequest(schedule_error);
+            }
+            schedule = userDTO.schedule.to_schedule();
         }
-
-        Schedule schedule = userDTO.schedule.to_schedule();
 
         // not DateTime.Now: with the time simulator ahead, the user must start in the same open month as everybody else
         DateOnly start_date = await currentDateService.get_new_user_start_date();
@@ -184,6 +218,11 @@ public class UserController: ControllerBase
         {
             await userService.create_user(user, schedule);
             return Ok();
+        }
+        catch (InvalidOperationException e)
+        {
+            // e.g. there is already an accountant account
+            return BadRequest(e.Message);
         }
         catch (Exception e)
         {
@@ -212,7 +251,7 @@ public class UserController: ControllerBase
     [HttpGet("user_details/{id}")]
     public async Task<ActionResult<UserDetailsDTO>> get_user_details([FromRoute] Guid id)
     {
-        ActionResult? error = require_admin("see the details of users");
+        ActionResult? error = await require_admin_or_accountant_for_employee(id, "see the details of users");
         if (error != null) return error;
 
         ClientUser? user = (await userService.get_all_users()).FirstOrDefault(u => u.id == id);

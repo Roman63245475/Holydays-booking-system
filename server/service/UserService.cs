@@ -32,8 +32,29 @@ public class UserService
         this.holidayHistoryService = holidayHistoryService;
     }
 
-    public async Task create_user(User user, Schedule schedule)
+    // an employee (role User) gets their working schedule, holiday accounts and first histories. the accountant and
+    // the system owner are role accounts: no schedule, no holiday, and there is exactly one of each (the system owner
+    // is created on startup, ux_users_single_role in the db is the safety net).
+    // throws InvalidOperationException if the role account already exists / an employee has no schedule
+    public async Task create_user(User user, Schedule? schedule)
     {
+        if (user.role != Role.User && await db.users.AnyAsync(u => u.role == user.role))
+        {
+            string existing = await db.users.Where(u => u.role == user.role).Select(u => u.email).FirstAsync();
+            throw new InvalidOperationException(
+                $"There is already {(user.role == Role.Accountant ? "an" : "a")} {role_name(user.role)} account ({existing}). There can only be one: " +
+                "change its name, email or password to hand it over to another person.");
+        }
+        if (user.role == Role.User && schedule == null)
+        {
+            throw new InvalidOperationException("An employee needs a working schedule");
+        }
+        string email = user.email.Trim();
+        if (await db.users.AnyAsync(u => u.email == email))
+        {
+            throw new InvalidOperationException("Another user already has this email");
+        }
+
         PasswordHasher<User> hasher = new PasswordHasher<User>();
         var hashedPassword = hasher.HashPassword(user, user.password);
         user.password = hashedPassword;
@@ -41,10 +62,13 @@ public class UserService
         try
         {
             User inserted = await db.users.InsertWithOutputAsync(user);
-            // in the same transaction: a user is never saved without a schedule
-            await scheduleService.create_first_schedule(inserted, schedule);
-            var (law_holidays, agreed_holidays) = await holidayAccountsService.initialize_users_holidays_accounts(inserted);
-            await holidayHistoryService.create_history_records(law_holidays, agreed_holidays, inserted.start_date);
+            if (inserted.role == Role.User)
+            {
+                // in the same transaction: an employee is never saved without a schedule
+                await scheduleService.create_first_schedule(inserted, schedule!);
+                var (law_holidays, agreed_holidays) = await holidayAccountsService.initialize_users_holidays_accounts(inserted);
+                await holidayHistoryService.create_history_records(law_holidays, agreed_holidays, inserted.start_date);
+            }
 
             await transaction.CommitAsync();
         }
@@ -55,16 +79,29 @@ public class UserService
         }
     }
 
-    // changes the user's data and, if it changed, their working schedule (a new schedule period from schedule_date).
-    // an empty password keeps the old one. throws KeyNotFoundException if the user does not exist and
-    // InvalidOperationException if the email belongs to another user
+    // changes the user's data and, if it changed, their working schedule (a new schedule period from schedule_date,
+    // employees only). an empty password keeps the old one. the role can not be changed: an employee has holiday
+    // accounts and a role account has none, and there is exactly one accountant and one system owner. a role account
+    // is handed over to another person by changing its name, email and password.
+    // throws KeyNotFoundException if the user does not exist and InvalidOperationException if the email belongs to
+    // another user, the role was changed or an employee has no schedule
     public async Task update_user(Guid id, string name, string email, string? password, Role role,
-        Schedule schedule, DateOnly schedule_date)
+        Schedule? schedule, DateOnly schedule_date)
     {
         User? user = await db.users.FirstOrDefaultAsync(u => u.id == id);
         if (user == null)
         {
             throw new KeyNotFoundException("User not found");
+        }
+        if (role != user.role)
+        {
+            throw new InvalidOperationException(
+                "The role of a user can not be changed. To give the accountant or system owner account to another " +
+                "person, change its name, email and password.");
+        }
+        if (user.role == Role.User && schedule == null)
+        {
+            throw new InvalidOperationException("schedule is required");
         }
 
         string trimmed_email = email.Trim();
@@ -75,7 +112,6 @@ public class UserService
 
         user.name = name.Trim();
         user.email = trimmed_email;
-        user.role = role;
         if (!string.IsNullOrEmpty(password))
         {
             user.password = new PasswordHasher<User>().HashPassword(user, password);
@@ -83,8 +119,16 @@ public class UserService
 
         await using var transaction = await db.BeginTransactionAsync();
         await db.UpdateAsync(user);
-        await scheduleService.change_schedule(id, schedule, schedule_date);
+        if (user.role == Role.User)
+        {
+            await scheduleService.change_schedule(id, schedule!, schedule_date);
+        }
         await transaction.CommitAsync();
+    }
+
+    private static string role_name(Role role)
+    {
+        return role == Role.Admin ? "system owner" : role == Role.Accountant ? "accountant" : "employee";
     }
 
     // removes the user with everything that belongs to them: holiday requests, holiday accounts with their
@@ -115,6 +159,12 @@ public class UserService
         if (user == null)
         {
             throw new KeyNotFoundException("User not found");
+        }
+        if (user.role != Role.User)
+        {
+            throw new InvalidOperationException(
+                $"The {role_name(user.role)} account is not an employee, it can not leave the company. " +
+                "Hand it over to another person by changing its name, email and password.");
         }
 
         // "today" of the system: the 1st of the month that is accrued next. the months before it are already accrued

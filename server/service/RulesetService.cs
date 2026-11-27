@@ -36,6 +36,8 @@ public class RulesetService
                 $"The rules can not start before {earliest_allowed:yyyy-MM-dd}: holidays are already accrued for the months before");
         }
 
+        // which preset the rules still are, decided here and not by the client
+        rule_set.preset = RuleSetPresets.match(rule_set);
         await db.InsertAsync(rule_set);
 
         // calculations read the rules from memory, so the new rule set must be loaded there too

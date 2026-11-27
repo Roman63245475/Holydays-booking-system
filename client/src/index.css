@@ -1273,3 +1273,15 @@ button:disabled:hover{
   color: #94a3b8;
   font-size: 0.85rem;
 }
+
+/* cost of a holiday request before it is sent (request form) */
+.request-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.request-preview p {
+  margin: 0;
+}

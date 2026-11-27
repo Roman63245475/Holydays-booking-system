@@ -1,10 +1,7 @@
 import "../index.css";
 import {useEffect, useState} from "react";
-import {EarningsTab} from "@/tabs/admin/EarningsTab.tsx";
 import UsersTab from "@/tabs/admin/UsersTab.tsx";
-import {ScheduleTab} from "@/tabs/admin/ScheduleTab.tsx";
 import {HolidayCalendar} from "@/HolidayCalendar.tsx";
-import {ActivityTab} from "@/tabs/admin/ActivityTab.tsx";
 import {Parameters} from "@/tabs/Parameters.tsx";
 import {HolidaysTab} from "@/tabs/HolidaysTab.tsx";
 import {useNavigate} from "react-router";
@@ -29,14 +26,8 @@ export function Admin(){
 
     const renderContent = () => {
         switch(activeTab){
-            case 'earnings':
-                return <EarningsTab />
-            case 'schedule':
-                return <ScheduleTab />
             case 'calendar':
                 return <HolidayCalendar title="Company Calendar" />
-            case 'activity':
-                return <ActivityTab />
             case 'parameters':
                 return <Parameters />
             case 'holidays':
@@ -67,10 +58,7 @@ export function Admin(){
                     <button onClick={() => setActiveTab('users')}>Users and Roles <span className={"icon users-icon"} /></button>
                     <button onClick={() => setActiveTab('parameters')}>Holiday Rules</button>
                     <button onClick={() => setActiveTab('holidays')}>Holidays</button>
-                    {/*<button onClick={() => setActiveTab('earnings')}>Holiday Earnings <span className={"icon earn-icon"} /></button>*/}
-                    {/*<button onClick={() => setActiveTab('schedule')}>Work Schedules <span className={"icon schedule-icon"} /></button>*/}
                     <button onClick={() => setActiveTab('calendar')}>Company Calendar <span className={"icon calendar-icon"} /></button>
-                    {/*<button onClick={() => setActiveTab('activity')}>Recent Activity <span className={"icon activity-icon"} /></button>*/}
                 </div>
                 <button className={"g-6"} onClick={logOut}>Log Out <span className={"icon log-out-icon"} /></button>
             </aside>

@@ -88,6 +88,67 @@ public class RequestValidator
         return new ValidatedRequest(account, hours, is_main_holiday);
     }
 
+    // "If possible, the other holiday days should be taken in blocks of at least 5 days" (the law's recommendation,
+    // not a company rule, so not a rule set parameter). only a recommendation: shorter holiday is allowed
+    public const int RECOMMENDED_BLOCK_DAYS = 5;
+
+    // weeks 1-5 holiday that is not the main holiday and costs less than 5 holiday days of the employee's schedule
+    // (the same "hours, not working days" measure as the main holiday: part timers count in their own day length).
+    // week 6 is placed in whole days at the employee's request, the recommendation is not about it
+    public static bool is_short_block(HolidayType type, decimal hours, bool is_main_holiday, Schedule? schedule)
+    {
+        if (type != HolidayType.FerieEfterFerieloven || is_main_holiday || schedule == null)
+        {
+            return false;
+        }
+        decimal block = Math.Round(RECOMMENDED_BLOCK_DAYS * schedule.get_average_day_hours(), 2, MidpointRounding.AwayFromZero);
+        return hours < block;
+    }
+
+    // the request form asks before sending: cost, main holiday, short block, and the rule it breaks (if any).
+    // runs the same checks as a real request, nothing is saved
+    public async Task<RequestPreview> preview(Guid user_id, Guid account_id, DateOnly start, DateOnly end)
+    {
+        RequestPreview result = new RequestPreview();
+        List<Schedule> schedules = await db.schedules.Where(s => s.user_id == user_id).ToListAsync();
+        Schedule? schedule = Schedule.find_for_date(schedules, start)
+                             ?? schedules.OrderByDescending(s => s.effective_from).FirstOrDefault();
+        try
+        {
+            ValidatedRequest valid = await validate(user_id, account_id, start, end, ignore_request_id: null, check_notice: true);
+            result.hours = valid.hours;
+            result.is_main_holiday = valid.is_main_holiday;
+            result.short_block = is_short_block(valid.account.holiday_type, valid.hours, valid.is_main_holiday, schedule);
+        }
+        catch (InvalidOperationException e)
+        {
+            // the request breaks a rule: still show what it would cost and whether it would be the main holiday
+            result.error = e.Message;
+            if (end >= start)
+            {
+                HashSet<DateOnly> days_off = (await db.days_off
+                        .Where(d => d.date >= start && d.date <= end)
+                        .Select(d => d.date)
+                        .ToListAsync())
+                    .ToHashSet();
+                result.hours = RequestService.calculate_holiday_hours(start, end, schedules, days_off);
+
+                HolidayAccount? account =
+                    (HolidayAccount?)await db.law_holidays.FirstOrDefaultAsync(l => l.id == account_id && l.user_id == user_id)
+                    ?? await db.agreed_holidays.FirstOrDefaultAsync(a => a.id == account_id && a.user_id == user_id);
+                if (account != null)
+                {
+                    result.is_main_holiday = is_main(account, start, end, schedules);
+                    result.short_block = is_short_block(account.holiday_type, result.hours, result.is_main_holiday, schedule);
+                }
+            }
+        }
+
+        decimal day_hours = schedule?.get_average_day_hours() ?? 0;
+        result.holiday_days = day_hours > 0 ? Math.Round(result.hours / day_hours, 1, MidpointRounding.AwayFromZero) : 0;
+        return result;
+    }
+
     // main holiday (hovedferie): weeks 1-5 holiday with at least main_holiday_length_days (15) holiday days inside the
     // main holiday window (1 May - 30 Sep). one holiday day = 1/5 of the employee's working week, so the limit is
     // 3 weeks of the employee's OWN schedule: full time 15 * 7.40 = 111 h = 3 * 37 h, part time 22.5 h/week -> 67.5 h.

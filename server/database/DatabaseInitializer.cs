@@ -23,6 +23,35 @@ public class DatabaseInitializer
         db.Execute(
             "ALTER TABLE users DROP COLUMN IF EXISTS salary, DROP COLUMN IF EXISTS salary_type"
         );
+        // the accountant and the system owner are role accounts with no holiday: data they got when every user was an
+        // employee is removed (requests, cancellations and transfers, then accounts with their histories and schedules,
+        // ON DELETE CASCADE). there is exactly one of each role account: if the db still has duplicates the index is
+        // not created (NOTICE), and UserService still refuses a second one
+        db.Execute(@"
+            DO $$
+            BEGIN
+                IF to_regclass('public.holiday_request') IS NOT NULL THEN
+                    DELETE FROM holiday_request WHERE user_id IN (SELECT id FROM users WHERE role IN (2, 3));
+                END IF;
+                IF to_regclass('public.holiday_transfer_request') IS NOT NULL THEN
+                    DELETE FROM holiday_transfer_request WHERE user_id IN (SELECT id FROM users WHERE role IN (2, 3));
+                END IF;
+                IF to_regclass('public.law_holidays') IS NOT NULL THEN
+                    DELETE FROM law_holidays WHERE user_id IN (SELECT id FROM users WHERE role IN (2, 3));
+                END IF;
+                IF to_regclass('public.agreed_holidays') IS NOT NULL THEN
+                    DELETE FROM agreed_holidays WHERE user_id IN (SELECT id FROM users WHERE role IN (2, 3));
+                END IF;
+                IF to_regclass('public.schedules') IS NOT NULL THEN
+                    DELETE FROM schedules WHERE user_id IN (SELECT id FROM users WHERE role IN (2, 3));
+                END IF;
+                BEGIN
+                    CREATE UNIQUE INDEX IF NOT EXISTS ux_users_single_role ON users (role) WHERE role IN (2, 3);
+                EXCEPTION WHEN unique_violation THEN
+                    RAISE NOTICE 'more than one accountant or system owner, ux_users_single_role not created';
+                END;
+            END $$;"
+        );
         // the last working day when the employee leaves (see User.end_date)
         db.Execute(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS end_date date NULL"
@@ -311,11 +340,21 @@ public class DatabaseInitializer
         db.Execute(
             "CREATE UNIQUE INDEX IF NOT EXISTS ux_rule_sets_effective_from ON rule_sets (effective_from)"
         );
+        // the preset a rule set was made from, or "Custom" (see RuleSet.preset)
+        db.Execute(
+            "ALTER TABLE rule_sets ADD COLUMN IF NOT EXISTS preset text NULL"
+        );
         // the first rule set on an empty db: the Business Esbjerg rules, valid "since always" (2000-01-01)
         // until the admin adds a new rule set
         if (!db.rule_sets.Any())
         {
             db.Insert(RuleSetPresets.business_esbjerg(new DateOnly(2000, 1, 1)));
+        }
+        // rule sets saved before the preset column existed
+        foreach (RuleSet rule_set in db.rule_sets.Where(r => r.preset == null).ToList())
+        {
+            string preset = RuleSetPresets.match(rule_set);
+            db.rule_sets.Where(r => r.id == rule_set.id).Set(r => r.preset, preset).Update();
         }
     }
 }

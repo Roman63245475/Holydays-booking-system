@@ -124,6 +124,12 @@ public class RequestService
         }
     }
 
+    // the request form: what the request would cost and whether it can be sent, before it is sent
+    public Task<RequestPreview> PreviewRequest(Guid user_id, Guid account_id, DateOnly start, DateOnly end)
+    {
+        return validator.preview(user_id, account_id, start, end);
+    }
+
     // hours a holiday from start to end (both included) costs. a day costs nothing if it is
     // a Saturday / Sunday, a public holiday or company day off, or a day the employee does not work (part time).
     // otherwise it costs the hours of that weekday in the schedule that applies on that date
@@ -151,9 +157,9 @@ public class RequestService
         return hours;
     }
 
-    // pending requests of all employees (accountant)
+    // pending requests of all employees (accountant), with the short block recommendation
     public async Task<List<HolidayRequestUser>> GetRequests() {
-        return await db.HolidayRequest
+        List<HolidayRequestUser> requests = await db.HolidayRequest
             .Where(r => r.RequestStatus == RequestStatus.Pending)
             .Join(db.users, r => r.user_id, u => u.id, (r, u) => new {r, u})
             .SelectMany(
@@ -171,9 +177,22 @@ public class RequestService
                     Hours = x.r.Hours,
                     IsMainHoliday = x.r.is_main_holiday,
                     HolidayType = x.law != null ? x.law.holiday_type : agreed.holiday_type,
-                    Status = x.r.RequestStatus
+                    Status = x.r.RequestStatus,
+                    UserId = x.r.user_id
                 }
             ).ToListAsync();
+
+        List<Guid> user_ids = requests.Select(r => r.UserId).Distinct().ToList();
+        Dictionary<Guid, List<Schedule>> schedules = (await db.schedules.Where(s => user_ids.Contains(s.user_id)).ToListAsync())
+            .GroupBy(s => s.user_id)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        foreach (HolidayRequestUser r in requests)
+        {
+            Schedule? schedule = Schedule.find_for_date(schedules.GetValueOrDefault(r.UserId, new List<Schedule>()),
+                DateOnly.ParseExact(r.StartDate, "yyyy-MM-dd"));
+            r.IsShortBlock = RequestValidator.is_short_block(r.HolidayType, r.Hours, r.IsMainHoliday, schedule);
+        }
+        return requests;
     }
 
     // pending requests of the employee (Ongoing Requests tab), newest first

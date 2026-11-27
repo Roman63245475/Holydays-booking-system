@@ -1,15 +1,75 @@
+using System.Reflection;
+
 namespace be;
 
-// ready-made rule sets. the first one is saved to the db on the first start (see DatabaseInitializer),
-// later the admin can start a new rule set from a preset and adjust it
+// one ready-made rule set the admin can start from
+public record RuleSetPreset(string key, string name, string description, Func<DateOnly, RuleSet> create);
+
+// ready-made rule sets. the Business Esbjerg one is saved to the db on the first start (see DatabaseInitializer),
+// later the admin can start a new rule set from a preset and adjust it. "A preset is a starting point. Changing a
+// value afterwards makes it a custom rule set": match() tells which preset a rule set still is.
+// not included: "Ferieloven + feriefridage" (extra holiday days need a third kind of holiday account) and
+// "Hourly-paid staff" (out of scope, they are paid through Feriekonto)
 public static class RuleSetPresets
 {
+    public const string CUSTOM = "Custom";
+
+    public static readonly IReadOnlyList<RuleSetPreset> all = new List<RuleSetPreset>
+    {
+        new RuleSetPreset("ferieloven_week6", "Ferieloven + 6. ferieuge (KL 05.11 model)",
+            "Weeks 1-5 by the Holiday Act + the 6th holiday week. What Business Esbjerg uses.", business_esbjerg),
+        new RuleSetPreset("ferieloven_minimum", "Ferieloven (minimum)",
+            "Only the 5 weeks of the Holiday Act, no 6th holiday week.", ferieloven_minimum),
+    };
+
+    // "Ferieloven (minimum)": the Holiday Act only, 5 weeks and nothing else. the week 6 periods stay filled in,
+    // so the 6th week can be switched on again later without typing them
+    public static RuleSet ferieloven_minimum(DateOnly effective_from)
+    {
+        RuleSet rules = business_esbjerg(effective_from);
+        rules.week6_enabled = false;
+        rules.preset = "Ferieloven (minimum)";
+        return rules;
+    }
+
+    // the name of the preset whose every rule value equals the given rule set, or CUSTOM
+    public static string match(RuleSet rule_set)
+    {
+        foreach (RuleSetPreset preset in all)
+        {
+            if (same_rules(rule_set, preset.create(rule_set.effective_from)))
+            {
+                return preset.name;
+            }
+        }
+        return CUSTOM;
+    }
+
+    // every rule value is equal (id, effective_from and preset are not rules). by reflection, so a new parameter
+    // added to RuleSet is compared without changing this method
+    public static bool same_rules(RuleSet a, RuleSet b)
+    {
+        foreach (PropertyInfo property in typeof(RuleSet).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (property.Name is nameof(RuleSet.id) or nameof(RuleSet.effective_from) or nameof(RuleSet.preset))
+            {
+                continue;
+            }
+            if (!Equals(property.GetValue(a), property.GetValue(b)))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // "Ferieloven + 6. ferieuge (KL 05.11 model)": what Business Esbjerg uses
     public static RuleSet business_esbjerg(DateOnly effective_from)
     {
         return new RuleSet
         {
             effective_from = effective_from,
+            preset = "Ferieloven + 6. ferieuge (KL 05.11 model)",
 
             // weeks 1-5: 2.08 days a month, earned 1 Sep - 31 Aug, used 1 Sep - 31 Dec of the following year
             weeks1to5_month_rate = 2.08m,
