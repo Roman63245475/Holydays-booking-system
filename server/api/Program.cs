@@ -66,6 +66,8 @@ builder.Services.AddScoped<RequestService>();
 builder.Services.AddScoped<ProjectionService>();
 builder.Services.AddScoped<CalendarService>();
 builder.Services.AddScoped<AccuralService>();
+builder.Services.AddScoped<AccountStatusService>();
+builder.Services.AddScoped<TransferService>();
 builder.Services.AddControllers();
 
 var app = builder.Build();

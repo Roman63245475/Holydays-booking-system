@@ -19,6 +19,7 @@ public class Database: DataConnection
     public ITable<AgreedHolidaysHistory> agreed_holidays_history => this.GetTable<AgreedHolidaysHistory>();
     public ITable<HolidayRequest> HolidayRequest => this.GetTable<HolidayRequest>();
     public ITable<HolidayCancellationRequest> cancellation_requests => this.GetTable<HolidayCancellationRequest>();
+    public ITable<HolidayTransferRequest> transfer_requests => this.GetTable<HolidayTransferRequest>();
     public ITable<Schedule> schedules => this.GetTable<Schedule>();
     public ITable<RuleSet> rule_sets => this.GetTable<RuleSet>();
     public ITable<DayOff> days_off => this.GetTable<DayOff>();

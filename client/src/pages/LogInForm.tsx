@@ -5,18 +5,26 @@ import { loginApi } from "../api/client.ts";
 import {type ClientUser, type LoginUserDTO, Role} from "../api/Api.ts";
 import {useNavigate} from "react-router";
 import storage from "@/storage.tsx";
+import {errorText} from "@/api/errors.ts";
 const LogInForm = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState<string | null>(null);
     const navigator = useNavigate();
 
     async function handleSubmit(e: React.FormEvent){
         e.preventDefault();
         const user: LoginUserDTO = {email, password};
 
-        const response = await loginApi.login(user);
-        storage.set('user', response);
-        redirect(response.role)
+        try {
+            const response = await loginApi.login(user);
+            setError(null);
+            storage.set('user', response);
+            redirect(response.role)
+        } catch (err) {
+            // wrong email / password, or the account was closed because the employee left the company
+            setError(errorText(err, "Could not log in."));
+        }
     }
 
     function redirect(role: Role | undefined){
@@ -48,6 +56,7 @@ const LogInForm = () => {
                     <label>Password: </label>
                     <input type={'password'} name={'password'} placeholder={'Enter password'} onChange={e => setPassword(e.target.value)}></input>
                 </div>
+                {error && <p className={"error"} role="alert">{error}</p>}
                 <button type={'submit'}>Log in</button>
             </form>
         </div>

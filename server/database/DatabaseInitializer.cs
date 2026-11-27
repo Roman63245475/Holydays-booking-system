@@ -23,6 +23,10 @@ public class DatabaseInitializer
         db.Execute(
             "ALTER TABLE users DROP COLUMN IF EXISTS salary, DROP COLUMN IF EXISTS salary_type"
         );
+        // the last working day when the employee leaves (see User.end_date)
+        db.Execute(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS end_date date NULL"
+        );
 
         db.CreateTable<HolidayRequest>(
             tableOptions: TableOptions.CreateIfNotExists
@@ -176,6 +180,42 @@ public class DatabaseInitializer
         );
         db.Execute(
             "ALTER TABLE agreed_holidays ADD COLUMN IF NOT EXISTS converted_holiday_hours numeric NOT NULL DEFAULT 0"
+        );
+
+        // transferred_holiday_hours = approved transfers to (-) / from (+) another holiday period (see HolidayAccount)
+        db.Execute(
+            "ALTER TABLE law_holidays ADD COLUMN IF NOT EXISTS transferred_holiday_hours numeric NOT NULL DEFAULT 0"
+        );
+        db.Execute(
+            "ALTER TABLE agreed_holidays ADD COLUMN IF NOT EXISTS transferred_holiday_hours numeric NOT NULL DEFAULT 0"
+        );
+
+        // holiday_transfer_request: the employee asks to transfer unused holiday to the next period (see HolidayTransferRequest).
+        // the account ids point to law_holidays OR agreed_holidays (holiday_type tells which), so they have no FK
+        db.CreateTable<HolidayTransferRequest>(
+            tableOptions: TableOptions.CreateIfNotExists
+        );
+        db.Execute(
+            "ALTER TABLE holiday_transfer_request ALTER COLUMN id SET DEFAULT gen_random_uuid()"
+        );
+        db.Execute(@"
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_transfer_request_user') THEN
+                    ALTER TABLE holiday_transfer_request
+                        ADD CONSTRAINT fk_transfer_request_user
+                        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_transfer_request_decided_by') THEN
+                    ALTER TABLE holiday_transfer_request
+                        ADD CONSTRAINT fk_transfer_request_decided_by
+                        FOREIGN KEY (decided_by) REFERENCES users(id) ON DELETE SET NULL;
+                END IF;
+            END $$;"
+        );
+        // at most one PENDING transfer per account (status 2 = RequestStatus.Pending)
+        db.Execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS ux_transfer_request_pending ON holiday_transfer_request (from_account_id) WHERE status = 2"
         );
 
         // law_holidays_history

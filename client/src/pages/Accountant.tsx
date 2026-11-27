@@ -12,6 +12,7 @@ import {RequestsTab} from "@/tabs/accountant/RequestsTab.tsx";
 import {ApprovedTab} from "@/tabs/accountant/ApprovedTab.tsx";
 import {BalanceTab} from "@/tabs/accountant/BalanceTab.tsx";
 import {CancellationRequestsTab} from "@/tabs/accountant/CancellationRequestsTab.tsx";
+import {TransferRequestsTab} from "@/tabs/accountant/TransferRequestsTab.tsx";
 
 export function Accountant(){
 
@@ -41,6 +42,8 @@ export function Accountant(){
         switch(activeTab){
             case 'cancellations':
                 return <CancellationRequestsTab />
+            case 'transfers':
+                return <TransferRequestsTab />
             case 'approved':
                 return <ApprovedTab />
             case 'calendar':
@@ -72,6 +75,7 @@ export function Accountant(){
                 <div className={"flex center-v"}>
                     <button onClick={() => openTab('requests')}>Pending Requests <span className={"icon pending-icon"} /></button>
                     <button onClick={() => openTab('cancellations')}>Cancellation Requests <span className={"icon pending-icon"} /></button>
+                    <button onClick={() => openTab('transfers')}>Transfer Requests <span className={"icon pending-icon"} /></button>
                     <button onClick={() => openTab('approved')}>Approved Holidays <span className={"icon approved-icon"} /></button>
                     <button onClick={() => openTab('calendar')}>Holiday Calendar <span className={"icon calendar-icon"} /></button>
                     <button onClick={() => openTab('balances')}>Employee Balances <span className={"icon balance-icon"} /></button>

@@ -6,7 +6,7 @@ import {useEffect} from "react";
 import {Role, type ClientUser} from "../../api/Api.ts";
 import {errorText} from "@/api/errors.ts";
 import {RescheduleMenu} from "@/dialog/RescheduleMenu.tsx";
-import {IllnessMenu} from "@/dialog/IllnessMenu.tsx";
+import {LeavingDialog} from "@/dialog/LeavingDialog.tsx";
 import {DesConfirmation} from "@/dialog/DesConfirmation.tsx";
 import {useNavigate} from "react-router";
 
@@ -34,6 +34,8 @@ function UsersTab(){
                 return <CreateUser setMenuOpen={setActiveMenu} submitted={loadUsers} user={null} setUser={setSelectedUser}/>
             case 'edit':
                 return <CreateUser setMenuOpen={setActiveMenu} submitted={loadUsers} user={selectedUser} setUser={setSelectedUser}/>
+            case 'leaving':
+                return selectedUser && <LeavingDialog user={selectedUser} onClose={() => setActiveMenu(null)} onSaved={loadUsers}/>
             case 'delete':
                 return <DesConfirmation setMenuOpen={setActiveMenu} title={'Confirmation'} description={"Are you sure you want to delete " + selectedUser?.name + "? All their holiday accounts, history and requests will be removed."} onConfirm={deleteUser}/>
             default:
@@ -76,6 +78,7 @@ function UsersTab(){
                         <th>Email</th>
                         <th>Role</th>
                         <th>Start date</th>
+                        <th>Last working day</th>
                         <th>Actions</th>
                     </tr>
                     </thead>
@@ -93,11 +96,18 @@ function UsersTab(){
                                 <td>{user.email}</td>
                                 <td>{user.role !== undefined ? Role[user.role] : "—"}</td>
                                 <td>{formatDate(user.start_date)}</td>
+                                <td>{user.end_date ? formatDate(user.end_date) : "—"}</td>
                                 <td>
                                     <button onClick={() => {
                                         setSelectedUser(user)
                                         setActiveMenu('edit')
                                     }}>Edit</button>
+                                    {user.role !== Role.Admin && (
+                                        <button onClick={() => {
+                                            setSelectedUser(user)
+                                            setActiveMenu('leaving')
+                                        }}>Leaving</button>
+                                    )}
                                     <button onClick={() => {
                                         setSelectedUser(user)
                                         setActiveMenu('delete')

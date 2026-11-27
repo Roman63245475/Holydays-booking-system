@@ -1,4 +1,4 @@
-import {CalendarClient, DayOffClient, LoginClient, RequestClient, RuleSetClient, TimeClient, UserClient} from "./Api";
+import {CalendarClient, DayOffClient, LoginClient, RequestClient, RuleSetClient, TimeClient, TransferClient, UserClient} from "./Api";
 
 const baseUrl = "http://localhost:5232";
 
@@ -14,3 +14,4 @@ export const ruleSetApi = new RuleSetClient(baseUrl, http);
 export const dayOffApi = new DayOffClient(baseUrl, http);
 export const requestApi = new RequestClient(baseUrl, http);
 export const calendarApi = new CalendarClient(baseUrl, http);
+export const transferApi = new TransferClient(baseUrl, http);

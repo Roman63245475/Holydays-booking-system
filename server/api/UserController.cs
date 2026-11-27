@@ -94,6 +94,45 @@ public class UserController: ControllerBase
         }
     }
 
+    // the system owner saves the last working day of an employee who leaves the company, or calls it off (empty).
+    // returns what was changed (cancelled holidays, declined requests / transfers)
+    [HttpPut("set_end_date/{id}")]
+    public async Task<ActionResult<LeavingResult>> set_end_date([FromRoute] Guid id, [FromBody] SetEndDateDTO dto)
+    {
+        ActionResult? auth_error = require_admin("register that an employee leaves");
+        if (auth_error != null) return auth_error;
+        if (is_me(id))
+        {
+            return BadRequest("You can not set your own last working day");
+        }
+
+        if (dto == null) return BadRequest("end_date must be yyyy-MM-dd or null");
+        DateOnly? end_date = null;
+        if (!string.IsNullOrWhiteSpace(dto.end_date))
+        {
+            if (!DateOnly.TryParseExact(dto.end_date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out DateOnly parsed))
+            {
+                return BadRequest("The date must be yyyy-MM-dd");
+            }
+            end_date = parsed;
+        }
+
+        Guid.TryParse(HttpContext.Session.GetString("userId"), out Guid admin_id);
+        try
+        {
+            return Ok(await userService.set_end_date(id, end_date, admin_id));
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (InvalidOperationException e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
+
     // removes the user and everything that belongs to them from the db (accounts, histories, schedules, requests)
     [HttpDelete("delete_user/{id}")]
     public async Task<IActionResult> delete_user([FromRoute] Guid id)
@@ -192,6 +231,7 @@ public class UserController: ControllerBase
             email = user.email,
             role = user.role,
             start_date = user.start_date,
+            end_date = user.end_date,
             weekly_hours = schedule?.get_weekly_hours() ?? 0,
             schedule = schedule != null ? ScheduleDTO.from_schedule(schedule) : null,
             page = page

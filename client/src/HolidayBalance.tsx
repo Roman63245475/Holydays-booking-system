@@ -1,4 +1,5 @@
 import type {HolidayAccountView} from "./api/Api";
+import {flagMessage, hours} from "./balanceStatus";
 
 // Keep these values in sync with server/be/HolidayType.cs. The generated API
 // client currently exposes TypeOfHolidayDay (for days off), not HolidayType.
@@ -11,6 +12,11 @@ interface HolidayBalanceProps {
     account: HolidayAccountView;
     // without onSelect the card is read-only (the admin's user page)
     onSelect?: (account: HolidayAccountView) => void;
+    // the employee's own page: ask to transfer hours to the next holiday period / take back a pending transfer
+    onTransfer?: (account: HolidayAccountView) => void;
+    onWithdrawTransfer?: (account: HolidayAccountView) => void;
+    // whose balance it is, for the texts of the status box
+    who?: "you" | "employee";
 }
 
 // dates come from the API as "yyyy-MM-dd" strings (typed as Date by the generated client)
@@ -34,7 +40,8 @@ export function accountTitle(account: HolidayAccountView): string {
         : `Weeks 1-5 · earned ${years}`;
 }
 
-export function HolidayBalance({account, onSelect}: HolidayBalanceProps) {
+export function HolidayBalance({account, onSelect, onTransfer, onWithdrawTransfer, who = "you"}: HolidayBalanceProps) {
+    const flag = flagMessage(account, who);
     return (
         <section className="holiday-balance-card">
             <h2 className="holiday-balance-title">{accountTitle(account)}</h2>
@@ -53,8 +60,40 @@ export function HolidayBalance({account, onSelect}: HolidayBalanceProps) {
                 {!!account.converted_holiday_hours && (
                     <p><span>Schedule change</span><strong>{account.converted_holiday_hours > 0 ? "+" : ""}{account.converted_holiday_hours} hours</strong></p>
                 )}
+                {/* approved transfers: - sent to the next holiday period, + received from the previous one */}
+                {!!account.transferred_holiday_hours && (
+                    <p>
+                        <span>{account.transferred_holiday_hours > 0 ? "Transferred in" : "Transferred out"}</span>
+                        <strong>{account.transferred_holiday_hours > 0 ? "+" : ""}{account.transferred_holiday_hours} hours</strong>
+                    </p>
+                )}
                 <p><span>Used</span><strong>{account.used_holiday_hours ?? "—"} hours</strong></p>
+                {!!account.pending_hours && (
+                    <p><span>Requested (pending)</span><strong>{account.pending_hours} hours</strong></p>
+                )}
             </div>
+            {flag && (
+                <div className={`balance-flag balance-flag--${flag.tone}`} role="status">
+                    <strong>{flag.title}</strong>
+                    <p>{flag.text}</p>
+                </div>
+            )}
+            {!!account.pending_transfer_id && (
+                <div className="balance-flag balance-flag--info">
+                    <strong>Transfer requested</strong>
+                    <p>{hours(account.pending_transfer_hours)} to the next holiday period, waiting for the accountant.</p>
+                    {onWithdrawTransfer && (
+                        <button type="button" className="btn-destructive-outline" onClick={() => onWithdrawTransfer(account)}>
+                            Withdraw transfer request
+                        </button>
+                    )}
+                </div>
+            )}
+            {onTransfer && account.can_transfer && (
+                <button className="holiday-balance-action holiday-balance-action--secondary" type="button" onClick={() => onTransfer(account)}>
+                    Transfer to the next period…
+                </button>
+            )}
             {onSelect && (
                 <button
                     className="holiday-balance-action"

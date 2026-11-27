@@ -49,6 +49,14 @@ public class RequestValidator
         // "today" is the simulated date (time simulator), not DateTime.Now
         DateOnly today = await currentDateService.get_current_date();
 
+        // an employee who leaves can only take holiday until their last working day, the rest is settled in cash
+        DateOnly? end_date = await db.users.Where(u => u.id == user_id).Select(u => u.end_date).FirstOrDefaultAsync();
+        if (end_date != null && end > end_date)
+        {
+            throw new InvalidOperationException(
+                $"Your employment ends on {end_date:yyyy-MM-dd}, a holiday must end on or before that day");
+        }
+
         // the holiday itself (not the day the request is sent) must lie inside the usage period of the account
         if (!account.covers(start, end))
         {
@@ -75,7 +83,7 @@ public class RequestValidator
 
         check_start(account, start, today, is_main_holiday, check_notice);
         await check_overlap(user_id, start, end, ignore_request_id);
-        await check_balance(account, hours, schedules, today, ignore_request_id);
+        await check_balance(account, hours, schedules, today, ignore_request_id, end_date);
 
         return new ValidatedRequest(account, hours, is_main_holiday);
     }
@@ -174,12 +182,16 @@ public class RequestValidator
     // max_holiday_debt_days (1 week), and must be 0 or positive again on 31 August (see check_balance_on_deadline).
     // week 6 and accounts that finished earning get nothing more, so no debt there
     private async Task check_balance(HolidayAccount account, decimal hours, List<Schedule> schedules, DateOnly today,
-        Guid? ignore_request_id)
+        Guid? ignore_request_id, DateOnly? end_date)
     {
         decimal reserved = await db.HolidayRequest
             .Where(r => r.account_id == account.id && r.RequestStatus == RequestStatus.Pending
                         && (ignore_request_id == null || r.id != ignore_request_id))
             .SumAsync(r => (decimal?)r.Hours) ?? 0;
+        // a pending transfer reserves its hours too: they leave the account if the accountant approves it
+        reserved += await db.transfer_requests
+            .Where(t => t.from_account_id == account.id && t.status == RequestStatus.Pending)
+            .SumAsync(t => (decimal?)t.hours) ?? 0;
 
         decimal available = account.get_available() - reserved;
         bool debt_possible = account.holiday_type == HolidayType.FerieEfterFerieloven && account.active;
@@ -200,14 +212,14 @@ public class RequestValidator
         if (available - hours < -allowed_debt)
         {
             string debt_text = allowed_debt > 0 ? $" + {allowed_debt:0.00} h of allowed holiday debt" : "";
-            string reserved_text = reserved > 0 ? $" ({reserved:0.00} h are reserved by your pending requests)" : "";
+            string reserved_text = reserved > 0 ? $" ({reserved:0.00} h are reserved by your pending requests / transfer)" : "";
             throw new InvalidOperationException(
                 $"Not enough holiday: the request costs {hours:0.00} h, you have {available:0.00} h{debt_text}{reserved_text}");
         }
 
         if (debt_possible)
         {
-            await check_balance_on_deadline(account, available - hours, schedules, today);
+            await check_balance_on_deadline(account, available - hours, schedules, today, end_date);
         }
     }
 
@@ -215,10 +227,16 @@ public class RequestValidator
     // the balance after this request + everything the account will still earn until then must be 0 or positive.
     // the future months are accrued exactly like AccuralService will do it (the schedule and rules of every month,
     // the total rounded once), so the projection matches the real balance on that day
-    private async Task check_balance_on_deadline(HolidayAccount account, decimal balance_after, List<Schedule> schedules, DateOnly today)
+    // an employee who leaves earns nothing after the last working day, so the debt must be paid back by then
+    private async Task check_balance_on_deadline(HolidayAccount account, decimal balance_after, List<Schedule> schedules,
+        DateOnly today, DateOnly? end_date)
     {
         RuleSet rule_set = HolidayParameters.get_rule_set(today);
         DateOnly deadline = next_date(today, rule_set.non_negative_balance_month, rule_set.non_negative_balance_day);
+        if (end_date != null && end_date < deadline)
+        {
+            deadline = end_date.Value;
+        }
         DateOnly accrue_until = deadline < account.earning_period_end ? deadline : account.earning_period_end;
 
         List<HolidayHistory> histories = (await db.law_holidays_history

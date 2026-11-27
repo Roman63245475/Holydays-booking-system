@@ -645,6 +645,7 @@ public class RequestService
                 .Select(l => l.id)
                 .ToListAsync())
             .ToHashSet();
+        DateOnly? end_date = await db.users.Where(u => u.id == userId).Select(u => u.end_date).FirstOrDefaultAsync();
 
         return requests
             .Select(r => new HolidayHistoryView
@@ -658,14 +659,14 @@ public class RequestService
                 status = r.RequestStatus,
                 created_at = r.created_at,
                 decided_at = r.updated_at ?? r.decided_at,
-                note = history_note(r, by_id, replaced_by, cancellations.GetValueOrDefault(r.id, new List<HolidayCancellationRequest>()))
+                note = history_note(r, by_id, replaced_by, cancellations.GetValueOrDefault(r.id, new List<HolidayCancellationRequest>()), end_date)
             })
             .OrderByDescending(h => h.created_at)
             .ToList();
     }
 
     private static string? history_note(HolidayRequest r, Dictionary<Guid, HolidayRequest> by_id,
-        Dictionary<Guid, HolidayRequest> replaced_by, List<HolidayCancellationRequest> cancellations)
+        Dictionary<Guid, HolidayRequest> replaced_by, List<HolidayCancellationRequest> cancellations, DateOnly? end_date)
     {
         replaced_by.TryGetValue(r.id, out HolidayRequest? successor);
         string successor_dates = successor != null ? $"{successor.StartDate} – {successor.EndDate}" : "";
@@ -674,7 +675,10 @@ public class RequestService
         switch (r.RequestStatus)
         {
             case RequestStatus.Rejected:
-                return "Declined by the accountant";
+                // HandleLeaving declines pending requests that go past the last working day
+                return end_date != null && string.CompareOrdinal(r.EndDate, end_date.Value.ToString("yyyy-MM-dd")) > 0
+                    ? $"Declined: the employment ends on {end_date:yyyy-MM-dd}"
+                    : "Declined by the accountant";
             case RequestStatus.Withdrawn:
                 // Edit: the old request is withdrawn and a new one with the new dates replaces it
                 return successor != null ? $"You changed the dates to {successor_dates}" : "Withdrawn by you";
@@ -709,6 +713,50 @@ public class RequestService
             default:
                 return null;
         }
+    }
+
+    // the employee leaves after last_day: approved holidays after it are cancelled (their hours are given back and
+    // settled with the final salary), pending requests that go past it are declined. an approved holiday that has
+    // started or starts on / before the last day but ends after it can not simply be cancelled (a started holiday is
+    // never interrupted), so then nothing is changed and the system owner must move it first or pick a later date.
+    // returns (cancelled holidays, declined requests). must run inside the caller's transaction
+    public async Task<(int cancelled, int declined)> HandleLeaving(Guid user_id, DateOnly last_day, Guid decided_by)
+    {
+        string last_text = last_day.ToString("yyyy-MM-dd");
+        // dates are "yyyy-MM-dd", so comparing the text compares the dates
+        List<HolidayRequest> after = (await db.HolidayRequest
+                .Where(r => r.user_id == user_id
+                            && (r.RequestStatus == RequestStatus.Pending || r.RequestStatus == RequestStatus.Accepted))
+                .ToListAsync())
+            .Where(r => string.CompareOrdinal(r.EndDate, last_text) > 0)
+            .ToList();
+
+        HolidayRequest? crossing = after.FirstOrDefault(r => r.RequestStatus == RequestStatus.Accepted
+                                                             && string.CompareOrdinal(r.StartDate, last_text) <= 0);
+        if (crossing != null)
+        {
+            throw new InvalidOperationException(
+                $"The approved holiday {crossing.StartDate} – {crossing.EndDate} goes past the last working day. " +
+                "Choose a later last working day or let the accountant move this holiday first.");
+        }
+
+        DateTime now = DateTime.UtcNow;
+        int cancelled = 0;
+        foreach (HolidayRequest request in after.Where(r => r.RequestStatus == RequestStatus.Accepted))
+        {
+            await record_employer_cancellation(request, decided_by, $"The employment ends on {last_text}", now);
+            await cancel_holiday(request, now);
+            cancelled++;
+        }
+
+        List<Guid> pending_ids = after.Where(r => r.RequestStatus == RequestStatus.Pending).Select(r => r.id).ToList();
+        int declined = pending_ids.Count == 0 ? 0 : await db.HolidayRequest
+            .Where(r => pending_ids.Contains(r.id) && r.RequestStatus == RequestStatus.Pending)
+            .Set(r => r.RequestStatus, RequestStatus.Rejected)
+            .Set(r => r.decided_at, now)
+            .UpdateAsync();
+
+        return (cancelled, declined);
     }
 
     // an approved holiday can be cancelled only while it is approved and has not started (05.11 § 10)

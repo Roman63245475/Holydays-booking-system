@@ -11,6 +11,8 @@ public class UserDetailsDTO
     public string email { get; set; } = "";
     public Role role { get; set; }
     public DateOnly start_date { get; set; }
+    // the last working day if the user leaves / has left the company
+    public DateOnly? end_date { get; set; }
     public decimal weekly_hours { get; set; }
     public ScheduleDTO? schedule { get; set; }
     public UserViewPage page { get; set; } = new UserViewPage();

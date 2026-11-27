@@ -38,25 +38,40 @@ public class AccuralService
             update_accrue_holidays(law_holidays_with_history);
             update_accrue_holidays(agreed_holidays_with_history);
 
+            // last working days of the users who leave the company (fratræden), null while employed
+            Dictionary<Guid, DateOnly?> end_dates = await get_end_dates(law_holidays_with_history, agreed_holidays_with_history);
+
+            // accounts of users whose last working day was in the month that was just accrued: they earned everything,
+            // they stop earning and get no new account
+            List<HolidayAccount> left_accounts = get_left_accounts(law_holidays_with_history, end_dates)
+                .Concat(get_left_accounts(agreed_holidays_with_history, end_dates))
+                .ToList();
+            HashSet<Guid> left_ids = left_accounts.Select(a => a.id).ToHashSet();
+
             // accounts whose earning period ends with the month that was just accrued
-            List<LawHolidays> ended_law_holidays = get_accounts_with_ended_earning_period(law_holidays_with_history);
-            List<AgreedHolidays> ended_agreed_holidays = get_accounts_with_ended_earning_period(agreed_holidays_with_history);
+            List<LawHolidays> ended_law_holidays = get_accounts_with_ended_earning_period(law_holidays_with_history)
+                .Where(a => !left_ids.Contains(a.id)).ToList();
+            List<AgreedHolidays> ended_agreed_holidays = get_accounts_with_ended_earning_period(agreed_holidays_with_history)
+                .Where(a => !left_ids.Contains(a.id)).ToList();
 
             // accounts with ended earning period are skipped here, they get a new account instead
-            await create_new_history_records<LawHolidaysHistory>(law_holidays_with_history);
-            await create_new_history_records<AgreedHolidaysHistory>(agreed_holidays_with_history);
+            await create_new_history_records<LawHolidaysHistory>(law_holidays_with_history, end_dates);
+            await create_new_history_records<AgreedHolidaysHistory>(agreed_holidays_with_history, end_dates);
 
             await update_holiday_accounts<LawHolidays>(law_holidays_with_history, nameof(LawHolidays.earned_holiday_hours));
             await update_holiday_accounts<AgreedHolidays>(agreed_holidays_with_history, nameof(AgreedHolidays.earned_holiday_hours));
 
             await start_new_earning_periods<LawHolidays, LawHolidaysHistory>(ended_law_holidays, HolidayType.FerieEfterFerieloven);
             await start_new_earning_periods<AgreedHolidays, AgreedHolidaysHistory>(ended_agreed_holidays, HolidayType.FerieUge);
+            await stop_earning(left_accounts);
 
             // the new histories are saved, so the current date is now the 1st of the next month.
             // accounts whose usage period ended before it can not be used anymore
             DateOnly today = await currentDateService.get_current_date();
             await expire_accounts<LawHolidays>(today);
             await expire_accounts<AgreedHolidays>(today);
+            // a transfer can only be agreed until its deadline
+            await TransferService.decline_overdue(db, today);
 
             await transaction.CommitAsync();
         }
@@ -75,7 +90,8 @@ public class AccuralService
     }
 
     // new() lets us create THistory (LawHolidaysHistory / AgreedHolidaysHistory) via its parameterless constructor
-    private async Task create_new_history_records<THistory>(IEnumerable<HolidayAccount> holidays)
+    // end_dates: a user who leaves gets no history after their last working day, the last one ends on that day
+    private async Task create_new_history_records<THistory>(IEnumerable<HolidayAccount> holidays, Dictionary<Guid, DateOnly?> end_dates)
         where THistory : HolidayHistory, new()
     {
         List<THistory> new_histories = new List<THistory>();
@@ -102,6 +118,20 @@ public class AccuralService
             if (next_end > holiday_acc.earning_period_end)
             {
                 next_end = holiday_acc.earning_period_end;
+            }
+
+            // the user leaves: nothing is earned after the last working day
+            DateOnly? end_date = end_dates.GetValueOrDefault(holiday_acc.user_id);
+            if (end_date != null)
+            {
+                if (next_start > end_date)
+                {
+                    continue;
+                }
+                if (next_end > end_date)
+                {
+                    next_end = end_date.Value;
+                }
             }
 
             new_histories.Add(new THistory
@@ -418,6 +448,45 @@ public class AccuralService
             .Where(h => h.usable && h.usage_period_end < today)
             .Set(h => h.usable, false)
             .UpdateAsync();
+    }
+
+    // last working day of every user of the given accounts (null while employed)
+    private async Task<Dictionary<Guid, DateOnly?>> get_end_dates(params IEnumerable<HolidayAccount>[] account_lists)
+    {
+        List<Guid> user_ids = account_lists.SelectMany(list => list).Select(a => a.user_id).Distinct().ToList();
+        return await db.users
+            .Where(u => user_ids.Contains(u.id))
+            .ToDictionaryAsync(u => u.id, u => u.end_date);
+    }
+
+    // accounts whose last accrued month reached the user's last working day (UserService.set_end_date makes the open
+    // month end on that day, create_new_history_records never goes past it)
+    private static List<HolidayAccount> get_left_accounts(IEnumerable<HolidayAccount> holidays, Dictionary<Guid, DateOnly?> end_dates)
+    {
+        return holidays
+            .Where(h => h.get__holiday_history() != null)
+            .Where(h =>
+            {
+                DateOnly? end_date = end_dates.GetValueOrDefault(h.user_id);
+                return end_date != null && h.get__holiday_history().period_end >= end_date;
+            })
+            .ToList();
+    }
+
+    // the accounts of a user who left stop earning (active = false). they stay usable until their usage period ends,
+    // their balance is what payroll settles with the final salary
+    private async Task stop_earning(List<HolidayAccount> left_accounts)
+    {
+        List<Guid> law_ids = left_accounts.Where(a => a.holiday_type == HolidayType.FerieEfterFerieloven).Select(a => a.id).ToList();
+        List<Guid> agreed_ids = left_accounts.Where(a => a.holiday_type == HolidayType.FerieUge).Select(a => a.id).ToList();
+        if (law_ids.Count > 0)
+        {
+            await db.law_holidays.Where(l => law_ids.Contains(l.id)).Set(l => l.active, false).UpdateAsync();
+        }
+        if (agreed_ids.Count > 0)
+        {
+            await db.agreed_holidays.Where(a => agreed_ids.Contains(a.id)).Set(a => a.active, false).UpdateAsync();
+        }
     }
 
     // all schedules of the users of the given accounts, grouped by user (one query for everybody)

@@ -18,6 +18,9 @@ public class UserViewPage
     public int main_holiday_length_days { get; set; }
     public int main_holiday_notice_months { get; set; }
     public string main_holiday_status { get; set; } = "none";
+
+    // the last working day if the employee leaves the company, otherwise null
+    public DateOnly? end_date { get; set; }
 }
 
 public class HolidayAccountView
@@ -35,5 +38,41 @@ public class HolidayAccountView
     public decimal used_holiday_hours { get; set; }
     // + / - hours from working schedule changes (the balance is converted so the number of days stays the same)
     public decimal converted_holiday_hours { get; set; }
+    // - hours transferred to the next holiday period, + hours received from the previous one (approved transfers)
+    public decimal transferred_holiday_hours { get; set; }
     public decimal available_holiday_hours { get; set; }
+    // false = the usage period is over (only shown to the accountant, as a balance payroll has to handle)
+    public bool usable { get; set; } = true;
+
+    // --- status of the balance (AccountStatusService) ---
+    // one holiday day of the employee's current schedule (weekly hours / 5), to show hours as days
+    public decimal day_hours { get; set; }
+    // reserved by pending holiday requests and a pending transfer of this account
+    public decimal pending_hours { get; set; }
+    // available - pending: hours that are not planned (requested) yet
+    public decimal unplanned_hours { get; set; }
+    // days until usage_period_end (negative when it is over)
+    public int days_until_expiry { get; set; }
+    // what has to be done with the balance:
+    //  "none"
+    //  "plan_soon"      unplanned hours and the usage period ends within AccountStatusService.EXPIRY_WARNING_MONTHS:
+    //                   they must be taken (or transferred), otherwise payroll pays them out / they go to the holiday fund
+    //  "expired_unused" the usage period is over and hours were neither taken nor transferred: payroll handles them
+    //  "leaving"        the employee leaves: the balance on the last working day is settled with the final salary
+    public string flag { get; set; } = "none";
+    // "leaving" only: what is left on the last working day = available + what is still earned until then
+    // (pending requests not counted, they may still be approved)
+    public decimal settlement_hours { get; set; }
+
+    // --- transfer to the next holiday period ---
+    public bool can_transfer { get; set; }
+    // the most hours that can be transferred now (1 week, for weeks 1-5 only the 5th week)
+    public decimal transfer_max_hours { get; set; }
+    // the last day a transfer can be agreed, null if a transfer is not possible at all for this account
+    public DateOnly? transfer_deadline { get; set; }
+    // why a transfer is not possible (shown when it is relevant), null if it is possible
+    public string? transfer_unavailable_reason { get; set; }
+    // the transfer request of this account that waits for the accountant, if any
+    public Guid? pending_transfer_id { get; set; }
+    public decimal pending_transfer_hours { get; set; }
 }

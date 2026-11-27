@@ -1196,3 +1196,80 @@ button:disabled:hover{
   max-width: none;
   margin: 28px 0 0;
 }
+
+/* status of a holiday balance: expires soon / expired / final settlement (AccountStatusService) */
+.balance-flag {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid rgb(245 158 11 / 0.3);
+  border-radius: 10px;
+  color: #fde68a;
+  background: rgb(245 158 11 / 0.1);
+  text-align: left;
+}
+
+.balance-flag p {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.balance-flag button {
+  margin-top: 8px;
+}
+
+.balance-flag--danger {
+  color: #fecaca;
+  background: rgb(239 68 68 / 0.1);
+  border-color: rgb(239 68 68 / 0.3);
+}
+
+.balance-flag--info {
+  color: #bfdbfe;
+  background: rgb(59 130 246 / 0.1);
+  border-color: rgb(96 165 250 / 0.3);
+}
+
+.holiday-balance-action--secondary {
+  margin-top: 10px;
+  border-color: rgb(96 165 250 / 0.35);
+  color: #dbeafe;
+  background-color: rgb(59 130 246 / 0.12);
+}
+
+.holiday-balance-action--secondary:hover {
+  background-color: rgb(59 130 246 / 0.24);
+}
+
+/* the accountant's balance overview */
+.balance-overview__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.balance-overview__tools label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.balance-overview__flag {
+  max-width: 420px;
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.balance-overview__flag strong {
+  display: block;
+}
+
+.balance-overview__flag--warning { color: #fde68a; }
+.balance-overview__flag--danger { color: #fecaca; }
+.balance-overview__flag--info { color: #bfdbfe; }
+
+.balance-overview__muted {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}

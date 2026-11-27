@@ -45,6 +45,12 @@ public class ProjectionService
         // the accrual of a month is added when the month is over (next_month), so on `date` every month before the
         // month of `date` is accrued. a date on the 1st of a month: the month before is just over, also accrued
         DateOnly accrue_until = new DateOnly(date.Year, date.Month, 1).AddDays(-1);
+        // an employee who leaves earns nothing after the last working day, and gets no new accounts after it
+        DateOnly? end_date = await db.users.Where(u => u.id == user_id).Select(u => u.end_date).FirstOrDefaultAsync();
+        if (end_date != null && accrue_until > end_date)
+        {
+            accrue_until = end_date.Value;
+        }
 
         List<HolidayAccount> accounts = new List<HolidayAccount>();
         accounts.AddRange(await db.law_holidays.Where(l => l.user_id == user_id && l.usable).ToListAsync());
@@ -63,10 +69,15 @@ public class ProjectionService
             .GroupBy(h => h.account_id)
             .ToDictionary(g => g.Key, g => g.ToList());
 
+        // pending holiday requests and pending transfers both reserve hours of their account
         Dictionary<Guid, decimal> pending = (await db.HolidayRequest
                 .Where(r => r.user_id == user_id && r.RequestStatus == RequestStatus.Pending)
                 .Select(r => new { r.account_id, r.Hours })
                 .ToListAsync())
+            .Concat((await db.transfer_requests
+                    .Where(t => t.user_id == user_id && t.status == RequestStatus.Pending)
+                    .ToListAsync())
+                .Select(t => new { account_id = t.from_account_id, Hours = t.hours }))
             .GroupBy(r => r.account_id)
             .ToDictionary(g => g.Key, g => g.Sum(r => r.Hours));
 
@@ -98,7 +109,7 @@ public class ProjectionService
             }
 
             DateOnly next_start = latest.earning_period_end.AddDays(1);
-            while (next_start <= date)
+            while (next_start <= date && (end_date == null || next_start <= end_date))
             {
                 var (earning_start, earning_end, usage_start, usage_end) = HolidayParameters.get_account_dates(type, next_start);
                 HolidayAccount future_account = type == HolidayType.FerieEfterFerieloven ? new LawHolidays() : new AgreedHolidays();
@@ -127,7 +138,7 @@ public class ProjectionService
                 .Sum(v => v.projected_hours),
             agreed_hours = views.Where(v => v.state == "usable" && v.holiday_type == HolidayType.FerieUge)
                 .Sum(v => v.projected_hours),
-            debt_hours = get_debt_hours(views, accounts, histories, schedules, date, accrue_until, day_hours),
+            debt_hours = get_debt_hours(views, accounts, histories, schedules, date, accrue_until, day_hours, end_date),
             accounts = views
                 .OrderBy(v => v.holiday_type)
                 .ThenBy(v => v.usage_period_end)
@@ -163,7 +174,7 @@ public class ProjectionService
     // minus what is already borrowed
     private static decimal get_debt_hours(List<ProjectedAccountView> views, List<HolidayAccount> accounts,
         Dictionary<Guid, List<HolidayHistory>> histories, List<Schedule> schedules, DateOnly date,
-        DateOnly accrue_until, decimal day_hours)
+        DateOnly accrue_until, decimal day_hours, DateOnly? end_date)
     {
         ProjectedAccountView? earning = views.FirstOrDefault(v => v.holiday_type == HolidayType.FerieEfterFerieloven
                                                                   && v.state == "usable"
@@ -187,7 +198,8 @@ public class ProjectionService
             ? histories.GetValueOrDefault(earning.id.Value, new List<HolidayHistory>())
             : new List<HolidayHistory>();
 
-        decimal earned_by_end = AccuralService.project_earned_total(account, account_histories, account.earning_period_end, schedules);
+        DateOnly earning_end = end_date != null && end_date < account.earning_period_end ? end_date.Value : account.earning_period_end;
+        decimal earned_by_end = AccuralService.project_earned_total(account, account_histories, earning_end, schedules);
         decimal earned_by_date = AccuralService.project_earned_total(account, account_histories, accrue_until, schedules);
         decimal earned_after = earned_by_end - earned_by_date;
 

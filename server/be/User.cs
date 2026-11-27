@@ -10,6 +10,11 @@ public class User
     public DateOnly start_date { get; set; }
     public Role role { get; set; }
 
+    // the last working day when the employee leaves the company (fratræden), null while employed.
+    // holiday is earned for the exact days up to and including it, then the accounts stop earning and what is
+    // left is settled with the final salary by payroll. after it the user can not log in anymore
+    public DateOnly? end_date { get; set; }
+
     private LawHolidays lawHolidays;
 
     private AgreedHolidays agreed_holidays;

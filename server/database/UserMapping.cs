@@ -14,5 +14,6 @@ public class UserMapping
         builder.Entity<User>().Property(x => x.password).HasColumnName("password").IsNullable(false);
         builder.Entity<User>().Property(x => x.start_date).HasColumnName("start_date").IsNullable(false);
         builder.Entity<User>().Property(x => x.role).HasColumnName("role").IsNullable(false);
+        builder.Entity<User>().Property(x => x.end_date).HasColumnName("end_date").IsNullable(true);
     }
 }

@@ -72,6 +72,7 @@ export function UserDetails() {
                         <dl className="user-details__facts">
                             <div><dt>Role</dt><dd>{user.role !== undefined ? Role[user.role] : "—"}</dd></div>
                             <div><dt>Start date</dt><dd>{String(user.start_date ?? "—")}</dd></div>
+                            {user.end_date && <div><dt>Last working day</dt><dd>{String(user.end_date)}</dd></div>}
                             <div><dt>Weekly hours</dt><dd>{(user.weekly_hours ?? 0).toFixed(2)} h</dd></div>
                             <div>
                                 <dt>Main holiday {page?.main_holiday_year}</dt>
@@ -99,7 +100,7 @@ export function UserDetails() {
                         <p className="ongoing-requests__message">This user has no holiday accounts that can still be used.</p>
                     ) : (
                         <div className="holiday-balances">
-                            {page?.accounts?.map((account) => <HolidayBalance key={account.id} account={account} />)}
+                            {page?.accounts?.map((account) => <HolidayBalance key={account.id} account={account} who="employee" />)}
                         </div>
                     )}
 

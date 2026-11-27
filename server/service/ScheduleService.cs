@@ -94,6 +94,14 @@ public class ScheduleService
                 .Set(a => a.converted_holiday_hours, a => a.converted_holiday_hours + correction)
                 .UpdateAsync();
         }
+
+        // a pending transfer is converted the same way, it is a part of the balance that is converted above
+        foreach (HolidayTransferRequest transfer in await db.transfer_requests
+                     .Where(t => t.user_id == user_id && t.status == RequestStatus.Pending).ToListAsync())
+        {
+            decimal hours = Math.Round(transfer.hours * new_day / old_day, 2, MidpointRounding.AwayFromZero);
+            await db.transfer_requests.Where(t => t.id == transfer.id).Set(t => t.hours, hours).UpdateAsync();
+        }
     }
 
     // hours to add to converted_holiday_hours so the remaining balance keeps its number of days

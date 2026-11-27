@@ -33,10 +33,14 @@ public abstract class HolidayAccount
     // earned_holiday_hours is not changed for this, it must stay the exact sum of the monthly accruals
     public decimal converted_holiday_hours { get; set; }
 
-    // hours that can still be spent: earned + schedule conversions - spent on approved holidays
+    // approved transfers (overførsel, see HolidayTransferRequest): - hours sent to the next holiday period,
+    // + hours received from the previous one. kept apart from earned_holiday_hours (the exact sum of the accruals)
+    public decimal transferred_holiday_hours { get; set; }
+
+    // hours that can still be spent: earned + schedule conversions + transfers - spent on approved holidays
     public decimal get_available()
     {
-        return get_earned() + converted_holiday_hours - get_used();
+        return get_earned() + converted_holiday_hours + transferred_holiday_hours - get_used();
     }
 
     // whether a holiday from start to end (both included) lies completely inside the usage period of this account

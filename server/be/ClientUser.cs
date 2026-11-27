@@ -8,6 +8,8 @@ public class ClientUser
     
     public DateOnly start_date { get; set; }
     public Role role { get; set; }
+    // the last working day if the user leaves / has left the company, otherwise null
+    public DateOnly? end_date { get; set; }
     
     public ClientUser (Guid id, string username, string email, Role role, DateOnly start_date)
     {

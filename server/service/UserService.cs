@@ -16,10 +16,15 @@ public class UserService
     private HolidayHistoryService holidayHistoryService;
     private ScheduleService scheduleService;
     private CurrentDateService currentDateService;
+    private AccountStatusService accountStatusService;
+    private RequestService requestService;
 
     public UserService(Database db, HolidayAccountsService holidayAccountsService, HolidayHistoryService holidayHistoryService,
-        ScheduleService scheduleService, CurrentDateService currentDateService)
+        ScheduleService scheduleService, CurrentDateService currentDateService, AccountStatusService accountStatusService,
+        RequestService requestService)
     {
+        this.accountStatusService = accountStatusService;
+        this.requestService = requestService;
         this.currentDateService = currentDateService;
         this.scheduleService = scheduleService;
         this.db = db;
@@ -95,10 +100,101 @@ public class UserService
         return deleted > 0;
     }
 
+    // the employee leaves the company (fratræden) after end_date (the last working day), or null = the leaving is
+    // called off (only before the last working day has passed). in one transaction:
+    //  - the month that is accrued next (the open history) ends on the last working day, so exactly the days worked
+    //    are earned; next_month then stops the accounts (AccuralService)
+    //  - approved holidays after the last day are cancelled, pending requests past it declined (RequestService)
+    //  - pending transfers are declined: what is left is settled with the final salary
+    // the remaining balance on the last day is shown as the settlement (AccountStatusService, flag "leaving").
+    // calling it off does not bring back holidays that were cancelled, the employee requests them again.
+    // throws KeyNotFoundException, InvalidOperationException (date not allowed / an approved holiday crosses it)
+    public async Task<LeavingResult> set_end_date(Guid id, DateOnly? end_date, Guid decided_by)
+    {
+        User? user = await db.users.FirstOrDefaultAsync(u => u.id == id);
+        if (user == null)
+        {
+            throw new KeyNotFoundException("User not found");
+        }
+
+        // "today" of the system: the 1st of the month that is accrued next. the months before it are already accrued
+        // and can not be changed anymore, so the last working day can not lie in them
+        DateOnly today = await currentDateService.get_current_date();
+        if (user.end_date != null && user.end_date < today)
+        {
+            throw new InvalidOperationException(
+                $"{user.name} already left on {user.end_date:yyyy-MM-dd}, this can not be changed anymore");
+        }
+        if (end_date != null && end_date < today)
+        {
+            throw new InvalidOperationException(
+                $"The last working day can not be before today ({today:yyyy-MM-dd}): the months before are already accrued");
+        }
+        if (end_date != null && end_date < user.start_date)
+        {
+            throw new InvalidOperationException($"The last working day can not be before the start date ({user.start_date:yyyy-MM-dd})");
+        }
+
+        await using var transaction = await db.BeginTransactionAsync();
+        await db.users.Where(u => u.id == id).Set(u => u.end_date, end_date).UpdateAsync();
+
+        List<HolidayAccount> earning = (await db.law_holidays.Where(l => l.user_id == id && l.active).ToListAsync())
+            .Cast<HolidayAccount>()
+            .ToList();
+        await set_open_history_end<LawHolidaysHistory>(earning, end_date);
+        earning = (await db.agreed_holidays.Where(a => a.user_id == id && a.active).ToListAsync())
+            .Cast<HolidayAccount>()
+            .ToList();
+        await set_open_history_end<AgreedHolidaysHistory>(earning, end_date);
+
+        LeavingResult result = new LeavingResult();
+        if (end_date != null)
+        {
+            (result.cancelled_holidays, result.declined_requests) =
+                await requestService.HandleLeaving(id, end_date.Value, decided_by);
+            result.declined_transfers = await TransferService.decline_for_leaving(db, id, end_date.Value);
+        }
+
+        await transaction.CommitAsync();
+        return result;
+    }
+
+    // the open (not yet accrued) history of every earning account normally ends with its month (or the earning
+    // period). with a last working day inside that month it ends on that day. recalculated from the history's own
+    // month, so changing or calling off the leaving date gives the right end again
+    private async Task set_open_history_end<THistory>(List<HolidayAccount> accounts, DateOnly? end_date)
+        where THistory : HolidayHistory
+    {
+        foreach (HolidayAccount account in accounts)
+        {
+            THistory? open = await db.GetTable<THistory>()
+                .Where(h => h.account_id == account.id)
+                .OrderByDescending(h => h.period_start)
+                .FirstOrDefaultAsync();
+            if (open == null)
+            {
+                continue;
+            }
+
+            DateOnly natural_end = HolidayParameters.last_day_of_month(open.period_start.Year, open.period_start.Month);
+            if (natural_end > account.earning_period_end)
+            {
+                natural_end = account.earning_period_end;
+            }
+            DateOnly period_end = end_date != null && end_date < natural_end ? end_date.Value : natural_end;
+
+            await db.GetTable<THistory>()
+                .Where(h => h.id == open.id)
+                .Set(h => h.period_end, period_end)
+                .UpdateAsync();
+        }
+    }
+
     public async Task<List<ClientUser>> get_all_users()
     {
         List<ClientUser> users = await db.users.Select(u => new ClientUser
-            { id = u.id, name = u.name, email = u.email, role = u.role, start_date = u.start_date }).ToListAsync();
+            { id = u.id, name = u.name, email = u.email, role = u.role, start_date = u.start_date, end_date = u.end_date })
+            .ToListAsync();
         return users;
     }
 
@@ -110,42 +206,9 @@ public class UserService
             return null;
         }
 
-        // all accounts that have not expired yet (usable), not only the ones that are still earning (active)
-        List<HolidayAccountView> law_accounts = await db.law_holidays
-            .Where(l => l.user_id == userId && l.usable)
-            .Select(l => new HolidayAccountView
-            {
-                id = l.id,
-                holiday_type = l.holiday_type,
-                active = l.active,
-                earning_period_start = l.earning_period_start,
-                earning_period_end = l.earning_period_end,
-                usage_period_start = l.usage_period_start,
-                usage_period_end = l.usage_period_end,
-                earned_holiday_hours = l.earned_holiday_hours,
-                used_holiday_hours = l.used_holiday_hours,
-                converted_holiday_hours = l.converted_holiday_hours,
-                available_holiday_hours = l.earned_holiday_hours + l.converted_holiday_hours - l.used_holiday_hours
-            })
-            .ToListAsync();
-
-        List<HolidayAccountView> agreed_accounts = await db.agreed_holidays
-            .Where(a => a.user_id == userId && a.usable)
-            .Select(a => new HolidayAccountView
-            {
-                id = a.id,
-                holiday_type = a.holiday_type,
-                active = a.active,
-                earning_period_start = a.earning_period_start,
-                earning_period_end = a.earning_period_end,
-                usage_period_start = a.usage_period_start,
-                usage_period_end = a.usage_period_end,
-                earned_holiday_hours = a.earned_holiday_hours,
-                used_holiday_hours = a.used_holiday_hours,
-                converted_holiday_hours = a.converted_holiday_hours,
-                available_holiday_hours = a.earned_holiday_hours + a.converted_holiday_hours - a.used_holiday_hours
-            })
-            .ToListAsync();
+        // all accounts that have not expired yet (usable), not only the ones that are still earning (active),
+        // with the status of each balance (expiry flag, transfer, settlement when leaving)
+        List<HolidayAccountView> accounts = await accountStatusService.get_account_views(userId);
 
         // the summer whose main holiday window is not over yet: this year until 30 September, then the next one
         DateOnly today = await currentDateService.get_current_date();
@@ -185,11 +248,9 @@ public class UserService
             main_holiday_length_days = season_rules.main_holiday_length_days,
             main_holiday_notice_months = rules.main_holiday_notice_months,
             main_holiday_status = main_holiday_status,
+            end_date = user.end_date,
             // weeks 1-5 first, the account that expires first comes first (it should be used first)
-            accounts = law_accounts.Concat(agreed_accounts)
-                .OrderBy(a => a.holiday_type)
-                .ThenBy(a => a.usage_period_end)
-                .ToList()
+            accounts = accounts
         };
     }
 

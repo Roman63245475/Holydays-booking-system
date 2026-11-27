@@ -1082,6 +1082,280 @@ export class TimeClient {
     }
 }
 
+export class TransferClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5232";
+    }
+
+    createTransfer(dto: TransferDTO): Promise<HolidayTransferRequest> {
+        let url_ = this.baseUrl + "/transfer/create";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(dto);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processCreateTransfer(_response);
+        });
+    }
+
+    protected processCreateTransfer(response: Response): Promise<HolidayTransferRequest> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as HolidayTransferRequest;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<HolidayTransferRequest>(null as any);
+    }
+
+    withdrawTransfer(id: string): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/transfer/{id}/withdraw";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processWithdrawTransfer(_response);
+        });
+    }
+
+    protected processWithdrawTransfer(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
+    getMyTransfers(): Promise<TransferRequestView[]> {
+        let url_ = this.baseUrl + "/transfer/mine";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetMyTransfers(_response);
+        });
+    }
+
+    protected processGetMyTransfers(response: Response): Promise<TransferRequestView[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as TransferRequestView[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<TransferRequestView[]>(null as any);
+    }
+
+    getPendingTransfers(): Promise<TransferRequestView[]> {
+        let url_ = this.baseUrl + "/transfers/pending";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetPendingTransfers(_response);
+        });
+    }
+
+    protected processGetPendingTransfers(response: Response): Promise<TransferRequestView[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as TransferRequestView[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<TransferRequestView[]>(null as any);
+    }
+
+    acceptTransfer(id: string): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/transfers/accept/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "POST",
+            headers: {
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processAcceptTransfer(_response);
+        });
+    }
+
+    protected processAcceptTransfer(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
+    declineTransfer(id: string, dto: DeclineTransferDTO): Promise<FileResponse> {
+        let url_ = this.baseUrl + "/transfers/decline/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(dto);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/octet-stream"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processDeclineTransfer(_response);
+        });
+    }
+
+    protected processDeclineTransfer(response: Response): Promise<FileResponse> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200 || status === 206) {
+            const contentDisposition = response.headers ? response.headers.get("content-disposition") : undefined;
+            let fileNameMatch = contentDisposition ? /filename\*=(?:(\\?['"])(.*?)\1|(?:[^\s]+'.*?')?([^;\n]*))/g.exec(contentDisposition) : undefined;
+            let fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[3] || fileNameMatch[2] : undefined;
+            if (fileName) {
+                fileName = decodeURIComponent(fileName);
+            } else {
+                fileNameMatch = contentDisposition ? /filename="?([^"]*?)"?(;|$)/g.exec(contentDisposition) : undefined;
+                fileName = fileNameMatch && fileNameMatch.length > 1 ? fileNameMatch[1] : undefined;
+            }
+            return response.blob().then(blob => { return { fileName: fileName, data: blob, status: status, headers: _headers }; });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<FileResponse>(null as any);
+    }
+
+    getBalanceOverview(): Promise<EmployeeBalanceRow[]> {
+        let url_ = this.baseUrl + "/balances/overview";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetBalanceOverview(_response);
+        });
+    }
+
+    protected processGetBalanceOverview(response: Response): Promise<EmployeeBalanceRow[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as EmployeeBalanceRow[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<EmployeeBalanceRow[]>(null as any);
+    }
+}
+
 export class UserClient {
     private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
     private baseUrl: string;
@@ -1171,6 +1445,46 @@ export class UserClient {
             });
         }
         return Promise.resolve<FileResponse>(null as any);
+    }
+
+    set_end_date(id: string, dto: SetEndDateDTO): Promise<LeavingResult> {
+        let url_ = this.baseUrl + "/set_end_date/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(dto);
+
+        let options_: RequestInit = {
+            body: content_,
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processSet_end_date(_response);
+        });
+    }
+
+    protected processSet_end_date(response: Response): Promise<LeavingResult> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as LeavingResult;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<LeavingResult>(null as any);
     }
 
     delete_user(id: string): Promise<FileResponse> {
@@ -1450,6 +1764,7 @@ export interface ClientUser {
     email?: string;
     start_date?: Date;
     role?: Role;
+    end_date?: Date | undefined;
 }
 
 export enum Role {
@@ -1660,12 +1975,105 @@ export interface ScheduleDTO {
     friday_end?: string | undefined;
 }
 
+export interface HolidayTransferRequest {
+    id?: string;
+    user_id?: string;
+    from_account_id?: string;
+    to_account_id?: string;
+    holiday_type?: HolidayType;
+    hours?: number;
+    deadline?: Date;
+    comment?: string | undefined;
+    status?: RequestStatus;
+    created_at?: Date;
+    decided_at?: Date | undefined;
+    decided_by?: string | undefined;
+    note?: string | undefined;
+}
+
+export interface TransferDTO {
+    account_id?: string;
+    hours?: number;
+    comment?: string | undefined;
+}
+
+export interface TransferRequestView {
+    id?: string;
+    user_id?: string;
+    name?: string;
+    holiday_type?: HolidayType;
+    earning_period_start?: Date;
+    earning_period_end?: Date;
+    usage_period_end?: Date;
+    to_usage_period_end?: Date;
+    hours?: number;
+    day_hours?: number;
+    deadline?: Date;
+    comment?: string | undefined;
+    status?: RequestStatus;
+    created_at?: Date;
+    decided_at?: Date | undefined;
+    note?: string | undefined;
+    max_hours_now?: number;
+    can_approve?: boolean;
+    not_approvable_reason?: string | undefined;
+}
+
+export interface DeclineTransferDTO {
+    note?: string | undefined;
+}
+
+export interface EmployeeBalanceRow {
+    user_id?: string;
+    name?: string;
+    end_date?: Date | undefined;
+    account?: HolidayAccountView;
+}
+
+export interface HolidayAccountView {
+    id?: string;
+    holiday_type?: HolidayType;
+    active?: boolean;
+    earning_period_start?: Date;
+    earning_period_end?: Date;
+    usage_period_start?: Date;
+    usage_period_end?: Date;
+    earned_holiday_hours?: number;
+    used_holiday_hours?: number;
+    converted_holiday_hours?: number;
+    transferred_holiday_hours?: number;
+    available_holiday_hours?: number;
+    usable?: boolean;
+    day_hours?: number;
+    pending_hours?: number;
+    unplanned_hours?: number;
+    days_until_expiry?: number;
+    flag?: string;
+    settlement_hours?: number;
+    can_transfer?: boolean;
+    transfer_max_hours?: number;
+    transfer_deadline?: Date | undefined;
+    transfer_unavailable_reason?: string | undefined;
+    pending_transfer_id?: string | undefined;
+    pending_transfer_hours?: number;
+}
+
 export interface UpdateUserDTO {
     name?: string;
     email?: string;
     password?: string | undefined;
     role?: Role;
     schedule?: ScheduleDTO;
+}
+
+export interface LeavingResult {
+    cancelled_holidays?: number;
+    declined_requests?: number;
+    declined_transfers?: number;
+}
+
+export interface SetEndDateDTO {
+    end_date?: string | undefined;
 }
 
 export interface CreateUserDTO {
@@ -1682,6 +2090,7 @@ export interface UserDetailsDTO {
     email?: string;
     role?: Role;
     start_date?: Date;
+    end_date?: Date | undefined;
     weekly_hours?: number;
     schedule?: ScheduleDTO | undefined;
     page?: UserViewPage;
@@ -1697,20 +2106,7 @@ export interface UserViewPage {
     main_holiday_length_days?: number;
     main_holiday_notice_months?: number;
     main_holiday_status?: string;
-}
-
-export interface HolidayAccountView {
-    id?: string;
-    holiday_type?: HolidayType;
-    active?: boolean;
-    earning_period_start?: Date;
-    earning_period_end?: Date;
-    usage_period_start?: Date;
-    usage_period_end?: Date;
-    earned_holiday_hours?: number;
-    used_holiday_hours?: number;
-    converted_holiday_hours?: number;
-    available_holiday_hours?: number;
+    end_date?: Date | undefined;
 }
 
 export interface ProjectedBalanceView {

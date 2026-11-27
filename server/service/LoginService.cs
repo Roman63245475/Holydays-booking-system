@@ -9,10 +9,12 @@ namespace service;
 public class LoginService
 {
     public Database db;
+    private CurrentDateService currentDateService;
 
-    public LoginService(Database db)
+    public LoginService(Database db, CurrentDateService currentDateService)
     {
         this.db = db;
+        this.currentDateService = currentDateService;
     }
 
     public async Task<User> login(User user)
@@ -29,7 +31,13 @@ public class LoginService
         {
             throw new ValidationException("Make sure that email and password are correct");
         }
-        
+
+        // an employee who left the company (after their last working day) can not log in anymore
+        if (login_user.end_date != null && login_user.end_date < await currentDateService.get_current_date())
+        {
+            throw new ValidationException($"This account was closed: the employment ended on {login_user.end_date:yyyy-MM-dd}");
+        }
+
         return login_user;
 
 

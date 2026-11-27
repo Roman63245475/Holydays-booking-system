@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { loginApi, userApi } from "../api/client";
+import { loginApi, transferApi, userApi } from "../api/client";
+import { errorText } from "../api/errors";
+import { TransferDialog } from "../dialog/TransferDialog";
+import { TransferRequests } from "../TransferRequests";
 import type { HolidayAccountView, UserViewPage } from "../api/Api";
 import storage from "../storage";
 import { DateTimeRangePicker } from "../DateTimeRangePicker";
@@ -15,6 +18,9 @@ export function User() {
     const [user, setUser] = useState<UserViewPage | null>(null);
     const [activeTab, setActiveTab] = useState<"home" | "onGoing" | "approved" | "history" | "calendar" | "request">("home");
     const [selectedAccount, setSelectedAccount] = useState<HolidayAccountView | null>(null);
+    // the balance the employee wants to transfer to the next holiday period (dialog open)
+    const [transferAccount, setTransferAccount] = useState<HolidayAccountView | null>(null);
+    const [transferError, setTransferError] = useState<string | null>(null);
     // changes on every menu click: the tab is mounted again and reloads its data, also when it is already open
     const [reloadKey, setReloadKey] = useState(0);
     const navigate = useNavigate();
@@ -37,6 +43,23 @@ export function User() {
         await loginApi.logout();
         storage.remove("user");
         navigate("/");
+    }
+
+    // reloads Home (balances and the transfer list)
+    function reloadHome() {
+        setReloadKey((k) => k + 1);
+    }
+
+    async function withdrawTransfer(account: HolidayAccountView) {
+        if (!account.pending_transfer_id) return;
+        if (!window.confirm("Withdraw the transfer request?")) return;
+        try {
+            await transferApi.withdrawTransfer(account.pending_transfer_id);
+            setTransferError(null);
+        } catch (err) {
+            setTransferError(errorText(err, "Could not withdraw the transfer request."));
+        }
+        reloadHome();
     }
 
     function handleSelectAccount(account: HolidayAccountView) {
@@ -66,7 +89,17 @@ export function User() {
                     <>
                         <h1>Good Morning, {user?.name}</h1>
 
+                        {user?.end_date && (
+                            <p className="main-holiday-notice">
+                                Your employment ends on {String(user.end_date)}. Holiday can be requested until that day,
+                                what is left then is settled with your final salary.
+                            </p>
+                        )}
                         {user && <MainHolidayNotice user={user} />}
+                        {transferError && <p className="error" role="alert">{transferError}</p>}
+                        {transferAccount && (
+                            <TransferDialog account={transferAccount} onClose={() => setTransferAccount(null)} onSent={reloadHome} />
+                        )}
 
                         {/* every account that has not expired yet: up to 2 of each type at the same time */}
                         <div className="holiday-balances">
@@ -75,12 +108,17 @@ export function User() {
                                     key={account.id}
                                     account={account}
                                     onSelect={handleSelectAccount}
+                                    onTransfer={setTransferAccount}
+                                    onWithdrawTransfer={withdrawTransfer}
                                 />
                             ))}
                         </div>
 
                         {/* by default: the start of the next main holiday window (how much is there for the summer) */}
                         {user && <PlanAhead initialDate={String(user.main_holiday_window_start ?? "")} />}
+
+                        {/* only shown when the employee has ever asked for a transfer */}
+                        <TransferRequests />
                     </>
                 ) : activeTab === "onGoing" ? (
                     <OnGoingRequest />
