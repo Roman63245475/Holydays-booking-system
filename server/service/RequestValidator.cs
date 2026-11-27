@@ -221,35 +221,18 @@ public class RequestValidator
         DateOnly deadline = next_date(today, rule_set.non_negative_balance_month, rule_set.non_negative_balance_day);
         DateOnly accrue_until = deadline < account.earning_period_end ? deadline : account.earning_period_end;
 
-        List<LawHolidaysHistory> histories = await db.law_holidays_history
+        List<HolidayHistory> histories = (await db.law_holidays_history
             .Where(h => h.account_id == account.id)
-            .ToListAsync();
+            .ToListAsync())
+            .Cast<HolidayHistory>()
+            .ToList();
         if (histories.Count == 0)
         {
             return;
         }
 
-        // the newest history is the month that is accrued next (accrued = 0), every month before it is in earned
-        DateOnly open_start = histories.Max(h => h.period_start);
-
-        decimal exact_total = 0;
-        foreach (LawHolidaysHistory h in histories.Where(h => h.period_start < open_start))
-        {
-            exact_total += AccuralService.get_exact_accrual(account, h.period_start, h.period_end, schedules);
-        }
-
-        for (DateOnly month_start = open_start; month_start <= accrue_until;
-             month_start = new DateOnly(month_start.Year, month_start.Month, 1).AddMonths(1))
-        {
-            DateOnly month_end = HolidayParameters.last_day_of_month(month_start.Year, month_start.Month);
-            if (month_end > accrue_until)
-            {
-                month_end = accrue_until;
-            }
-            exact_total += AccuralService.get_exact_accrual(account, month_start, month_end, schedules);
-        }
-
-        decimal still_earned = Math.Round(exact_total, 2, MidpointRounding.AwayFromZero) - account.get_earned();
+        decimal still_earned = AccuralService.project_earned_total(account, histories, accrue_until, schedules)
+                               - account.get_earned();
         decimal projected = balance_after + still_earned;
         if (projected < 0)
         {

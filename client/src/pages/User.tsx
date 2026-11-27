@@ -7,10 +7,13 @@ import { DateTimeRangePicker } from "../DateTimeRangePicker";
 import { accountTitle, HolidayBalance } from "../HolidayBalance";
 import { OnGoingRequest } from "../OnGoingRequest";
 import { ApprovedRequests } from "../ApprovedRequests";
+import { HolidayCalendar } from "../HolidayCalendar";
+import { HolidayHistory } from "../HolidayHistory";
+import { PlanAhead } from "../PlanAhead";
 
 export function User() {
     const [user, setUser] = useState<UserViewPage | null>(null);
-    const [activeTab, setActiveTab] = useState<"home" | "onGoing" | "approved" | "history" | "request">("home");
+    const [activeTab, setActiveTab] = useState<"home" | "onGoing" | "approved" | "history" | "calendar" | "request">("home");
     const [selectedAccount, setSelectedAccount] = useState<HolidayAccountView | null>(null);
     // changes on every menu click: the tab is mounted again and reloads its data, also when it is already open
     const [reloadKey, setReloadKey] = useState(0);
@@ -25,7 +28,7 @@ export function User() {
             .catch(() => navigate("/"));
     }, [navigate, activeTab, reloadKey]);
 
-    function openTab(tab: "home" | "onGoing" | "approved" | "history") {
+    function openTab(tab: "home" | "onGoing" | "approved" | "history" | "calendar") {
         setActiveTab(tab);
         setReloadKey((k) => k + 1);
     }
@@ -52,6 +55,7 @@ export function User() {
                     <button onClick={() => openTab("onGoing")}>Ongoing Requests</button>
                     <button onClick={() => openTab("approved")}>Approved Holidays</button>
                     <button onClick={() => openTab("history")}>Holiday History</button>
+                    <button onClick={() => openTab("calendar")}>Team Calendar</button>
                 </div>
 
                 <button className="g-6" onClick={logOut}>Log Out</button>
@@ -74,13 +78,18 @@ export function User() {
                                 />
                             ))}
                         </div>
+
+                        {/* by default: the start of the next main holiday window (how much is there for the summer) */}
+                        {user && <PlanAhead initialDate={String(user.main_holiday_window_start ?? "")} />}
                     </>
                 ) : activeTab === "onGoing" ? (
                     <OnGoingRequest />
                 ) : activeTab === "approved" ? (
                     <ApprovedRequests />
                 ) : activeTab === "history" ? (
-                    <h2>Your holidays in the past</h2>
+                    <HolidayHistory />
+                ) : activeTab === "calendar" ? (
+                    <HolidayCalendar title="Team Calendar" />
                 ) : activeTab === "request" ? (
                     <div className="p-8">
                         <h2>

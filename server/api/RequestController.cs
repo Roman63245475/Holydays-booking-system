@@ -329,6 +329,23 @@ public class RequestController : ControllerBase
         return Ok(await requestService.GetChangedByEmployer(userId));
     }
 
+    // the holiday history of the logged in user: all requests that are not pending anymore
+    [HttpGet("request/history")]
+    public async Task<ActionResult<List<HolidayHistoryView>>> GetHistory()
+    {
+        if (!TryGetUserId(out Guid userId)) return Unauthorized("Not logged in");
+        return Ok(await requestService.GetHistory(userId));
+    }
+
+    // the holiday history of any user, for the system owner's user page
+    [HttpGet("requests/history/{userId}")]
+    public async Task<ActionResult<List<HolidayHistoryView>>> GetUserHistory([FromRoute] Guid userId)
+    {
+        var error = ValidateUser(Role.Admin);
+        if (error != null) return error;
+        return Ok(await requestService.GetHistory(userId));
+    }
+
     private bool TryGetUserId(out Guid userId)
     {
         return Guid.TryParse(HttpContext.Session.GetString("userId"), out userId);

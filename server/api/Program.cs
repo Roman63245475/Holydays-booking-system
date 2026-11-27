@@ -63,6 +63,8 @@ builder.Services.AddHttpClient<DayOffService>(client =>
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<RequestValidator>();
 builder.Services.AddScoped<RequestService>();
+builder.Services.AddScoped<ProjectionService>();
+builder.Services.AddScoped<CalendarService>();
 builder.Services.AddScoped<AccuralService>();
 builder.Services.AddControllers();
 

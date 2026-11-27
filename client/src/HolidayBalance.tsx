@@ -9,7 +9,8 @@ const HolidayType = {
 
 interface HolidayBalanceProps {
     account: HolidayAccountView;
-    onSelect: (account: HolidayAccountView) => void;
+    // without onSelect the card is read-only (the admin's user page)
+    onSelect?: (account: HolidayAccountView) => void;
 }
 
 // dates come from the API as "yyyy-MM-dd" strings (typed as Date by the generated client)
@@ -54,13 +55,15 @@ export function HolidayBalance({account, onSelect}: HolidayBalanceProps) {
                 )}
                 <p><span>Used</span><strong>{account.used_holiday_hours ?? "—"} hours</strong></p>
             </div>
-            <button
-                className="holiday-balance-action"
-                type="button"
-                onClick={() => onSelect(account)}
-            >
-                Request from this balance
-            </button>
+            {onSelect && (
+                <button
+                    className="holiday-balance-action"
+                    type="button"
+                    onClick={() => onSelect(account)}
+                >
+                    Request from this balance
+                </button>
+            )}
         </section>
     );
 }

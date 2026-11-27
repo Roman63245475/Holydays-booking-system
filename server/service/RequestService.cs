@@ -618,6 +618,99 @@ public class RequestService
             .ToList();
     }
 
+    // the holiday history of the user: every request that is not pending anymore, newest first. the note is built
+    // from what is already stored: the request that replaced it (Edit by the employee or a move by the accountant,
+    // replaces_request_id) and its cancellation requests (who cancelled it and why)
+    public async Task<List<HolidayHistoryView>> GetHistory(Guid userId)
+    {
+        List<HolidayRequest> requests = await db.HolidayRequest
+            .Where(r => r.user_id == userId && r.RequestStatus != RequestStatus.Pending)
+            .ToListAsync();
+        // all requests of the user (also pending ones): a pending request can be the new version of an edited one
+        Dictionary<Guid, HolidayRequest> by_id = (await db.HolidayRequest.Where(r => r.user_id == userId).ToListAsync())
+            .ToDictionary(r => r.id);
+        Dictionary<Guid, HolidayRequest> replaced_by = by_id.Values
+            .Where(r => r.replaces_request_id != null)
+            .GroupBy(r => r.replaces_request_id!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(r => r.created_at).First());
+        Dictionary<Guid, List<HolidayCancellationRequest>> cancellations = (await db.cancellation_requests
+                .Where(c => c.user_id == userId)
+                .ToListAsync())
+            .GroupBy(c => c.holiday_request_id)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(c => c.created_at).ToList());
+
+        List<Guid> account_ids = requests.Select(r => r.account_id).Distinct().ToList();
+        HashSet<Guid> law_accounts = (await db.law_holidays
+                .Where(l => account_ids.Contains(l.id))
+                .Select(l => l.id)
+                .ToListAsync())
+            .ToHashSet();
+
+        return requests
+            .Select(r => new HolidayHistoryView
+            {
+                id = r.id,
+                start_date = r.StartDate,
+                end_date = r.EndDate,
+                hours = r.Hours,
+                holiday_type = law_accounts.Contains(r.account_id) ? HolidayType.FerieEfterFerieloven : HolidayType.FerieUge,
+                is_main_holiday = r.is_main_holiday,
+                status = r.RequestStatus,
+                created_at = r.created_at,
+                decided_at = r.updated_at ?? r.decided_at,
+                note = history_note(r, by_id, replaced_by, cancellations.GetValueOrDefault(r.id, new List<HolidayCancellationRequest>()))
+            })
+            .OrderByDescending(h => h.created_at)
+            .ToList();
+    }
+
+    private static string? history_note(HolidayRequest r, Dictionary<Guid, HolidayRequest> by_id,
+        Dictionary<Guid, HolidayRequest> replaced_by, List<HolidayCancellationRequest> cancellations)
+    {
+        replaced_by.TryGetValue(r.id, out HolidayRequest? successor);
+        string successor_dates = successor != null ? $"{successor.StartDate} – {successor.EndDate}" : "";
+        HolidayCancellationRequest? accepted = cancellations.FirstOrDefault(c => c.status == RequestStatus.Accepted);
+
+        switch (r.RequestStatus)
+        {
+            case RequestStatus.Rejected:
+                return "Declined by the accountant";
+            case RequestStatus.Withdrawn:
+                // Edit: the old request is withdrawn and a new one with the new dates replaces it
+                return successor != null ? $"You changed the dates to {successor_dates}" : "Withdrawn by you";
+            case RequestStatus.Cancelled:
+                if (accepted?.initiated_by == CancellationInitiator.Employer)
+                {
+                    string reason = string.IsNullOrWhiteSpace(accepted.reason) ? "" : $": {accepted.reason}";
+                    return successor != null
+                        ? $"Moved to {successor_dates} by the accountant{reason}"
+                        : $"Cancelled by the accountant{reason}";
+                }
+                string own_reason = string.IsNullOrWhiteSpace(accepted?.reason) ? "" : $" ({accepted!.reason})";
+                return $"Cancelled on your request{own_reason}";
+            case RequestStatus.Accepted:
+                List<string> notes = new List<string>();
+                if (r.replaces_request_id != null && by_id.TryGetValue(r.replaces_request_id.Value, out HolidayRequest? before))
+                {
+                    notes.Add(before.RequestStatus == RequestStatus.Cancelled
+                        ? $"Moved here by the accountant from {before.StartDate} – {before.EndDate}"
+                        : $"Changed from {before.StartDate} – {before.EndDate}");
+                }
+                HolidayCancellationRequest? last = cancellations.FirstOrDefault();
+                if (last?.status == RequestStatus.Pending)
+                {
+                    notes.Add("You asked to cancel it, waiting for the accountant");
+                }
+                else if (last?.status == RequestStatus.Rejected)
+                {
+                    notes.Add("Your cancellation request was declined");
+                }
+                return notes.Count > 0 ? string.Join(". ", notes) : null;
+            default:
+                return null;
+        }
+    }
+
     // an approved holiday can be cancelled only while it is approved and has not started (05.11 § 10)
     private async Task check_can_be_cancelled(HolidayRequest request, string started_message)
     {

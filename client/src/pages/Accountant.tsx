@@ -3,7 +3,7 @@ import {useEffect, useState} from "react";
 import {EarningsTab} from "@/tabs/admin/EarningsTab.tsx";
 import UsersTab from "@/tabs/admin/UsersTab.tsx";
 import {ScheduleTab} from "@/tabs/admin/ScheduleTab.tsx";
-import {CalendarTab} from "@/tabs/admin/CalendarTab.tsx";
+import {HolidayCalendar} from "@/HolidayCalendar.tsx";
 import {ActivityTab} from "@/tabs/admin/ActivityTab.tsx";
 import {useNavigate} from "react-router";
 import {loginApi, timeApi} from "@/api/client.ts";
@@ -43,6 +43,8 @@ export function Accountant(){
                 return <CancellationRequestsTab />
             case 'approved':
                 return <ApprovedTab />
+            case 'calendar':
+                return <HolidayCalendar title="Holiday Calendar" />
             case 'balances':
                 return <BalanceTab />
             default:
@@ -71,6 +73,7 @@ export function Accountant(){
                     <button onClick={() => openTab('requests')}>Pending Requests <span className={"icon pending-icon"} /></button>
                     <button onClick={() => openTab('cancellations')}>Cancellation Requests <span className={"icon pending-icon"} /></button>
                     <button onClick={() => openTab('approved')}>Approved Holidays <span className={"icon approved-icon"} /></button>
+                    <button onClick={() => openTab('calendar')}>Holiday Calendar <span className={"icon calendar-icon"} /></button>
                     <button onClick={() => openTab('balances')}>Employee Balances <span className={"icon balance-icon"} /></button>
                 </div>
                 <button className={"g-6"} onClick={logOut}>Log Out <span className={"icon log-out-icon"} /></button>

@@ -8,6 +8,7 @@ import {errorText} from "@/api/errors.ts";
 import {RescheduleMenu} from "@/dialog/RescheduleMenu.tsx";
 import {IllnessMenu} from "@/dialog/IllnessMenu.tsx";
 import {DesConfirmation} from "@/dialog/DesConfirmation.tsx";
+import {useNavigate} from "react-router";
 
 function formatDate(value?: Date | string): string {
     if (!value) return "—";
@@ -21,6 +22,7 @@ function UsersTab(){
     const [activeMenu, setActiveMenu] = useState<string | null>(null);
     const [selectedUser, setSelectedUser] = useState<ClientUser | null>(null);
     const [users, setUsers] = useState<ClientUser[]>([]);
+    const navigate = useNavigate();
 
     useEffect(()=>{
          loadUsers();
@@ -62,6 +64,7 @@ function UsersTab(){
                 renderContent()
             }
             <h1>User Management</h1>
+            <p className={"users-table__hint"}>Double-click a user to see their holiday accounts and history.</p>
             <div className={"table-border"}>
                 <div className={"table-tools"}>
                     <button onClick={() => setActiveMenu('create')}>Create User <span className={"icon create-user-icon"} /></button>
@@ -78,7 +81,14 @@ function UsersTab(){
                     </thead>
                     <tbody>
                         {users.map((user) => (
-                            <tr key={user.id}>
+                            <tr key={user.id}
+                                className={"users-table__row"}
+                                title={"Double-click to open the user's holiday accounts"}
+                                onDoubleClick={(e) => {
+                                    // a double-click on Edit / Delete is not a request to open the page
+                                    if ((e.target as HTMLElement).closest("button")) return;
+                                    navigate(`/admin_page/users/${user.id}`);
+                                }}>
                                 <td>{user.name}</td>
                                 <td>{user.email}</td>
                                 <td>{user.role !== undefined ? Role[user.role] : "—"}</td>

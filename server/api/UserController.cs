@@ -11,9 +11,12 @@ public class UserController: ControllerBase
     private UserService userService;
     private CurrentDateService currentDateService;
     private ScheduleService scheduleService;
+    private ProjectionService projectionService;
 
-    public UserController(UserService userService, CurrentDateService currentDateService, ScheduleService scheduleService)
+    public UserController(UserService userService, CurrentDateService currentDateService, ScheduleService scheduleService,
+        ProjectionService projectionService)
     {
+        this.projectionService = projectionService;
         this.userService = userService;
         this.currentDateService = currentDateService;
         this.scheduleService = scheduleService;
@@ -164,6 +167,63 @@ public class UserController: ControllerBase
         }
 
         return Ok(await userService.get_all_users());
+    }
+
+    // the page of one user for the system owner: data, current schedule and holiday accounts
+    [HttpGet("user_details/{id}")]
+    public async Task<ActionResult<UserDetailsDTO>> get_user_details([FromRoute] Guid id)
+    {
+        ActionResult? error = require_admin("see the details of users");
+        if (error != null) return error;
+
+        ClientUser? user = (await userService.get_all_users()).FirstOrDefault(u => u.id == id);
+        UserViewPage? page = await userService.get_user(id);
+        if (user == null || page == null)
+        {
+            return NotFound("User not found");
+        }
+
+        DateOnly today = await currentDateService.get_current_date();
+        Schedule? schedule = await scheduleService.get_schedule_for_date(id, today);
+        return Ok(new UserDetailsDTO
+        {
+            id = user.id,
+            name = user.name,
+            email = user.email,
+            role = user.role,
+            start_date = user.start_date,
+            weekly_hours = schedule?.get_weekly_hours() ?? 0,
+            schedule = schedule != null ? ScheduleDTO.from_schedule(schedule) : null,
+            page = page
+        });
+    }
+
+    // the logged in user's holiday on a future date (date = "yyyy-MM-dd"): today's balances - pending requests
+    // + what will be earned until then. a projection only, nothing is saved
+    [HttpGet(nameof(projected_balance))]
+    public async Task<ActionResult<ProjectedBalanceView>> projected_balance([FromQuery] string date)
+    {
+        if (!Guid.TryParse(HttpContext.Session.GetString("userId"), out Guid userId))
+        {
+            return Unauthorized();
+        }
+        if (!DateOnly.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out DateOnly day))
+        {
+            return BadRequest("The date must be yyyy-MM-dd");
+        }
+        try
+        {
+            return Ok(await projectionService.get_projected_balance(userId, day));
+        }
+        catch (InvalidOperationException e)
+        {
+            return BadRequest(e.Message);
+        }
+        catch (KeyNotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
     }
 
     [HttpGet(nameof(me))]

@@ -1,0 +1,15 @@
+# ggshield (GitGuardian) configuration: secret scanning of commits
+# https://docs.gitguardian.com/ggshield-docs/reference/gitguardian-yaml
+version: 2
+
+secret:
+  # generated / third-party files that are never edited by hand
+  ignored_paths:
+    - "**/node_modules/**"
+    - "**/bin/**"
+    - "**/obj/**"
+    - "client/dist/**"
+    - "client/bun.lock"
+  # findings that were checked and are not real secrets are added here with
+  # `ggshield secret ignore --last-found` (it writes their hashes into this file)
+  show_secrets: false

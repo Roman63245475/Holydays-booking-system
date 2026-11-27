@@ -3,7 +3,7 @@ import {useEffect, useState} from "react";
 import {EarningsTab} from "@/tabs/admin/EarningsTab.tsx";
 import UsersTab from "@/tabs/admin/UsersTab.tsx";
 import {ScheduleTab} from "@/tabs/admin/ScheduleTab.tsx";
-import {CalendarTab} from "@/tabs/admin/CalendarTab.tsx";
+import {HolidayCalendar} from "@/HolidayCalendar.tsx";
 import {ActivityTab} from "@/tabs/admin/ActivityTab.tsx";
 import {Parameters} from "@/tabs/Parameters.tsx";
 import {HolidaysTab} from "@/tabs/HolidaysTab.tsx";
@@ -34,7 +34,7 @@ export function Admin(){
             case 'schedule':
                 return <ScheduleTab />
             case 'calendar':
-                return <CalendarTab />
+                return <HolidayCalendar title="Company Calendar" />
             case 'activity':
                 return <ActivityTab />
             case 'parameters':
@@ -69,7 +69,7 @@ export function Admin(){
                     <button onClick={() => setActiveTab('holidays')}>Holidays</button>
                     {/*<button onClick={() => setActiveTab('earnings')}>Holiday Earnings <span className={"icon earn-icon"} /></button>*/}
                     {/*<button onClick={() => setActiveTab('schedule')}>Work Schedules <span className={"icon schedule-icon"} /></button>*/}
-                    {/*<button onClick={() => setActiveTab('calendar')}>Company Calendar <span className={"icon calendar-icon"} /></button>*/}
+                    <button onClick={() => setActiveTab('calendar')}>Company Calendar <span className={"icon calendar-icon"} /></button>
                     {/*<button onClick={() => setActiveTab('activity')}>Recent Activity <span className={"icon activity-icon"} /></button>*/}
                 </div>
                 <button className={"g-6"} onClick={logOut}>Log Out <span className={"icon log-out-icon"} /></button>

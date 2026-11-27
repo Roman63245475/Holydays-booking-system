@@ -830,3 +830,369 @@ button:disabled:hover{
   margin: 0.35rem 0;
   color: #e2e8f0;
 }
+
+/* ---------- status badges of the holiday history ---------- */
+.ongoing-requests__status--rejected {
+  color: #fecaca;
+  background: rgb(239 68 68 / 0.12);
+  border-color: rgb(239 68 68 / 0.25);
+}
+.ongoing-requests__status--rejected .ongoing-requests__status-dot { background: #f87171; }
+.ongoing-requests__status--cancelled {
+  color: #fed7aa;
+  background: rgb(249 115 22 / 0.12);
+  border-color: rgb(249 115 22 / 0.25);
+}
+.ongoing-requests__status--cancelled .ongoing-requests__status-dot { background: #fb923c; }
+.ongoing-requests__status--withdrawn {
+  color: #cbd5e1;
+  background: rgb(148 163 184 / 0.12);
+  border-color: rgb(148 163 184 / 0.25);
+}
+.ongoing-requests__status--withdrawn .ongoing-requests__status-dot { background: #94a3b8; }
+.holiday-history__note {
+  max-width: 320px;
+  color: #cbd5e1 !important;
+  font-size: 0.9rem;
+}
+
+/* ---------- holiday calendar ---------- */
+.holiday-calendar {
+  max-width: 1200px;
+}
+.holiday-calendar__filter {
+  display: inline-flex;
+  flex: none;
+  border: 1px solid rgb(148 163 184 / 0.25);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.holiday-calendar__filter button {
+  padding: 0.45rem 0.9rem;
+  color: #cbd5e1;
+}
+.holiday-calendar__filter button.is-active {
+  color: #f8fafc;
+  background-color: rgb(59 130 246 / 0.35);
+}
+.holiday-calendar__filter button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.holiday-calendar__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.holiday-calendar__nav strong {
+  font-size: 1.2rem;
+}
+.holiday-calendar__nav button {
+  padding: 0.45rem 0.9rem;
+  color: #bfdbfe;
+  border: 1px solid rgb(96 165 250 / 0.25);
+  border-radius: 8px;
+}
+.holiday-calendar__scroll {
+  overflow-x: auto;
+}
+/* working days wide, Saturday and Sunday narrow (like a printed holiday plan) */
+.holiday-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(110px, 1fr)) repeat(2, minmax(56px, 0.5fr));
+  min-width: 700px;
+  border-top: 1px solid rgb(148 163 184 / 0.18);
+  border-left: 1px solid rgb(148 163 184 / 0.18);
+}
+.holiday-calendar__weekday,
+.holiday-calendar__day {
+  border-right: 1px solid rgb(148 163 184 / 0.18);
+  border-bottom: 1px solid rgb(148 163 184 / 0.18);
+}
+.holiday-calendar__weekday {
+  padding: 0.4rem;
+  color: #94a3b8;
+  background: #172338;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.holiday-calendar__day {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 92px;
+  padding: 4px;
+  background: #202e43;
+}
+.holiday-calendar__weekday.is-weekend,
+.holiday-calendar__day.is-off {
+  background: #3a4556;
+}
+.holiday-calendar__day.is-outside {
+  background: #18222f;
+}
+.holiday-calendar__day.is-past {
+  opacity: 0.55;
+}
+.holiday-calendar__day.is-today {
+  outline: 2px solid #60a5fa;
+  outline-offset: -2px;
+}
+.holiday-calendar__day-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+}
+.holiday-calendar__date {
+  color: #e2e8f0;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.holiday-calendar__count {
+  padding: 0 0.4rem;
+  color: #bfdbfe;
+  background: rgb(59 130 246 / 0.18);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+.holiday-calendar__day-off {
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-style: italic;
+  line-height: 1.2;
+}
+.holiday-calendar__more {
+  color: #94a3b8;
+  font-size: 0.72rem;
+  cursor: default;
+}
+.holiday-chip {
+  display: block;
+  overflow: hidden;
+  padding: 1px 6px;
+  color: #042f2e;
+  background: #2dd4bf;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+.holiday-chip--week6 {
+  color: #2e1065;
+  background: #c4b5fd;
+}
+.holiday-chip--pending {
+  color: #e2e8f0;
+  background: transparent;
+  border: 1px dashed #2dd4bf;
+}
+.holiday-chip--week6.holiday-chip--pending {
+  border-color: #c4b5fd;
+}
+.holiday-chip--mine {
+  box-shadow: 0 0 0 2px #f8fafc;
+}
+.holiday-calendar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+.holiday-calendar__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.holiday-calendar__legend .holiday-chip {
+  width: 22px;
+  height: 12px;
+  padding: 0;
+}
+.holiday-calendar__swatch {
+  display: inline-block;
+  width: 22px;
+  height: 12px;
+  background: #3a4556;
+  border: 1px solid rgb(148 163 184 / 0.3);
+}
+
+/* ---------- plan ahead (balance on a future date) ---------- */
+.plan-ahead {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid rgb(148 163 184 / 0.2);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgb(30 41 59 / 0.95), rgb(15 23 42 / 0.95));
+}
+.plan-ahead__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+.plan-ahead__header h2 {
+  margin: 0;
+}
+.plan-ahead__date {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+.plan-ahead__date input {
+  color: #f8fafc;
+  color-scheme: dark;
+}
+.plan-ahead__totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+.plan-ahead__totals > div {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  background: rgb(15 23 42 / 0.6);
+  border-radius: 12px;
+}
+.plan-ahead__totals span {
+  color: #cbd5e1;
+}
+.plan-ahead__totals strong {
+  color: #6ee7b7;
+  font-size: 1.9rem;
+  line-height: 1.2;
+}
+.plan-ahead__totals strong.is-negative {
+  color: #fca5a5;
+}
+.plan-ahead__totals small {
+  color: #94a3b8;
+}
+.plan-ahead__note {
+  margin: 12px 0 0;
+  padding: 10px 14px;
+  color: #cbd5e1;
+  background: rgb(59 130 246 / 0.1);
+  border-left: 3px solid #60a5fa;
+  border-radius: 6px;
+}
+.plan-ahead__note--warning {
+  color: #fde68a;
+  background: rgb(245 158 11 / 0.1);
+  border-left-color: #fbbf24;
+}
+.plan-ahead__details {
+  margin-top: 16px;
+  color: #cbd5e1;
+}
+.plan-ahead__details summary {
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+.plan-ahead__details .ongoing-requests__table {
+  min-width: 0;
+}
+
+/* ---------- admin: users table + user page ---------- */
+.users-table__row {
+  cursor: pointer;
+  user-select: none;
+}
+.users-table__row:hover td {
+  background-color: #33435c;
+}
+.users-table__hint {
+  margin-top: -8px;
+  color: #94a3b8;
+}
+.user-details {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+}
+.user-details__back {
+  margin-bottom: 12px;
+  padding: 0.5rem 0.9rem;
+  color: #bfdbfe;
+  border: 1px solid rgb(96 165 250 / 0.25);
+  border-radius: 8px;
+}
+.user-details__card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: space-between;
+  padding: 24px;
+  background: rgb(30 41 59 / 0.88);
+  border: 1px solid rgb(148 163 184 / 0.18);
+  border-radius: 14px;
+}
+.user-details__card h1 {
+  margin: 0;
+}
+.user-details__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(140px, auto));
+  gap: 10px 32px;
+  margin: 0;
+}
+.user-details__facts dt {
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+.user-details__facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+.user-details__schedule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+}
+.user-details__schedule > div {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  background: rgb(15 23 42 / 0.6);
+  border-radius: 8px;
+}
+.user-details__schedule > div.is-off {
+  opacity: 0.5;
+}
+.user-details__schedule span {
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+.user-details__heading {
+  margin: 28px 0 0;
+}
+
+@media (max-width: 700px) {
+  .plan-ahead__totals,
+  .user-details__facts {
+    grid-template-columns: 1fr;
+  }
+}
+.holiday-history__nowrap {
+  white-space: nowrap;
+}
+.user-details .ongoing-requests {
+  max-width: none;
+  margin: 28px 0 0;
+}

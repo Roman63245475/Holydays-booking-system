@@ -13,6 +13,7 @@ import LogInForm from "@/pages/LogInForm.tsx";
 import {Admin} from "@/pages/Admin.tsx";
 import {User} from "@/pages/User.tsx";
 import {Accountant} from "@/pages/Accountant.tsx";
+import {UserDetails} from "@/pages/UserDetails.tsx";
 
 const elem = document.getElementById("root")!;
 const app = (
@@ -24,6 +25,10 @@ const app = (
         {
           path: '/admin_page',
           element: <Admin/>
+        },
+        {
+          path: '/admin_page/users/:id',
+          element: <UserDetails/>
         },
         {
             path: '/user_page',

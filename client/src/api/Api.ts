@@ -7,6 +7,58 @@
 /* eslint-disable */
 // ReSharper disable InconsistentNaming
 
+export class CalendarClient {
+    private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
+    private baseUrl: string;
+    protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
+
+    constructor(baseUrl?: string, http?: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> }) {
+        this.http = http ? http : window as any;
+        this.baseUrl = baseUrl ?? "http://localhost:5232";
+    }
+
+    get_month(year: number | undefined, month: number | undefined): Promise<CalendarMonthView> {
+        let url_ = this.baseUrl + "/calendar?";
+        if (year === null)
+            throw new globalThis.Error("The parameter 'year' cannot be null.");
+        else if (year !== undefined)
+            url_ += "year=" + encodeURIComponent("" + year) + "&";
+        if (month === null)
+            throw new globalThis.Error("The parameter 'month' cannot be null.");
+        else if (month !== undefined)
+            url_ += "month=" + encodeURIComponent("" + month) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGet_month(_response);
+        });
+    }
+
+    protected processGet_month(response: Response): Promise<CalendarMonthView> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as CalendarMonthView;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<CalendarMonthView>(null as any);
+    }
+}
+
 export class DayOffClient {
     private http: { fetch(url: RequestInfo, init?: RequestInit): Promise<Response> };
     private baseUrl: string;
@@ -824,6 +876,75 @@ export class RequestClient {
         }
         return Promise.resolve<CancelledHolidayView[]>(null as any);
     }
+
+    getHistory(): Promise<HolidayHistoryView[]> {
+        let url_ = this.baseUrl + "/request/history";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetHistory(_response);
+        });
+    }
+
+    protected processGetHistory(response: Response): Promise<HolidayHistoryView[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as HolidayHistoryView[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<HolidayHistoryView[]>(null as any);
+    }
+
+    getUserHistory(userId: string): Promise<HolidayHistoryView[]> {
+        let url_ = this.baseUrl + "/requests/history/{userId}";
+        if (userId === undefined || userId === null)
+            throw new globalThis.Error("The parameter 'userId' must be defined.");
+        url_ = url_.replace("{userId}", encodeURIComponent("" + userId));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGetUserHistory(_response);
+        });
+    }
+
+    protected processGetUserHistory(response: Response): Promise<HolidayHistoryView[]> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as HolidayHistoryView[];
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<HolidayHistoryView[]>(null as any);
+    }
 }
 
 export class RuleSetClient {
@@ -1168,6 +1289,79 @@ export class UserClient {
         return Promise.resolve<ClientUser[]>(null as any);
     }
 
+    get_user_details(id: string): Promise<UserDetailsDTO> {
+        let url_ = this.baseUrl + "/user_details/{id}";
+        if (id === undefined || id === null)
+            throw new globalThis.Error("The parameter 'id' must be defined.");
+        url_ = url_.replace("{id}", encodeURIComponent("" + id));
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processGet_user_details(_response);
+        });
+    }
+
+    protected processGet_user_details(response: Response): Promise<UserDetailsDTO> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as UserDetailsDTO;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<UserDetailsDTO>(null as any);
+    }
+
+    projected_balance(date: string | undefined): Promise<ProjectedBalanceView> {
+        let url_ = this.baseUrl + "/projected_balance?";
+        if (date === null)
+            throw new globalThis.Error("The parameter 'date' cannot be null.");
+        else if (date !== undefined)
+            url_ += "date=" + encodeURIComponent("" + date) + "&";
+        url_ = url_.replace(/[?&]$/, "");
+
+        let options_: RequestInit = {
+            method: "GET",
+            headers: {
+                "Accept": "application/json"
+            }
+        };
+
+        return this.http.fetch(url_, options_).then((_response: Response) => {
+            return this.processProjected_balance(_response);
+        });
+    }
+
+    protected processProjected_balance(response: Response): Promise<ProjectedBalanceView> {
+        const status = response.status;
+        let _headers: any = {}; if (response.headers && response.headers.forEach) { response.headers.forEach((v: any, k: any) => _headers[k] = v); };
+        if (status === 200) {
+            return response.text().then((_responseText) => {
+            let result200: any = null;
+            result200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver) as ProjectedBalanceView;
+            return result200;
+            });
+        } else if (status !== 200 && status !== 204) {
+            return response.text().then((_responseText) => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            });
+        }
+        return Promise.resolve<ProjectedBalanceView>(null as any);
+    }
+
     me(): Promise<UserViewPage> {
         let url_ = this.baseUrl + "/me";
         url_ = url_.replace(/[?&]$/, "");
@@ -1202,16 +1396,47 @@ export class UserClient {
     }
 }
 
-export interface DayOff {
-    id?: string;
-    name?: string;
+export interface CalendarMonthView {
+    year?: number;
+    month?: number;
+    today?: Date;
+    employee_count?: number;
+    days_off?: CalendarDayOffView[];
+    holidays?: CalendarHolidayView[];
+}
+
+export interface CalendarDayOffView {
     date?: Date;
-    holiday_type?: TypeOfHolidayDay;
+    name?: string;
+    type?: TypeOfHolidayDay;
 }
 
 export enum TypeOfHolidayDay {
     Danish = 1,
     Company = 2,
+}
+
+export interface CalendarHolidayView {
+    request_id?: string;
+    user_id?: string;
+    user_name?: string;
+    start_date?: string;
+    end_date?: string;
+    holiday_type?: HolidayType;
+    status?: string;
+    is_mine?: boolean;
+}
+
+export enum HolidayType {
+    FerieEfterFerieloven = 1,
+    FerieUge = 2,
+}
+
+export interface DayOff {
+    id?: string;
+    name?: string;
+    date?: Date;
+    holiday_type?: TypeOfHolidayDay;
 }
 
 export interface CompanyDayOffDTO {
@@ -1295,11 +1520,6 @@ export interface HolidayRequestUser {
     holidayType?: HolidayType;
 }
 
-export enum HolidayType {
-    FerieEfterFerieloven = 1,
-    FerieUge = 2,
-}
-
 export interface EditRequestDTO {
     startDate?: string;
     endDate?: string;
@@ -1380,6 +1600,19 @@ export interface CancelledHolidayView {
     movedToHours?: number | undefined;
 }
 
+export interface HolidayHistoryView {
+    id?: string;
+    start_date?: string;
+    end_date?: string;
+    hours?: number;
+    holiday_type?: HolidayType;
+    is_main_holiday?: boolean;
+    status?: RequestStatus;
+    created_at?: Date;
+    decided_at?: Date | undefined;
+    note?: string | undefined;
+}
+
 export interface RuleSetDTO {
     effective_from?: Date;
     weeks1to5_month_rate?: number;
@@ -1443,6 +1676,17 @@ export interface CreateUserDTO {
     schedule?: ScheduleDTO;
 }
 
+export interface UserDetailsDTO {
+    id?: string;
+    name?: string;
+    email?: string;
+    role?: Role;
+    start_date?: Date;
+    weekly_hours?: number;
+    schedule?: ScheduleDTO | undefined;
+    page?: UserViewPage;
+}
+
 export interface UserViewPage {
     name?: string;
     email?: string;
@@ -1467,6 +1711,30 @@ export interface HolidayAccountView {
     used_holiday_hours?: number;
     converted_holiday_hours?: number;
     available_holiday_hours?: number;
+}
+
+export interface ProjectedBalanceView {
+    date?: Date;
+    today?: Date;
+    day_hours?: number;
+    law_hours?: number;
+    agreed_hours?: number;
+    debt_hours?: number;
+    accounts?: ProjectedAccountView[];
+}
+
+export interface ProjectedAccountView {
+    id?: string | undefined;
+    holiday_type?: HolidayType;
+    earning_period_start?: Date;
+    earning_period_end?: Date;
+    usage_period_start?: Date;
+    usage_period_end?: Date;
+    available_now?: number;
+    pending_hours?: number;
+    future_accrual?: number;
+    projected_hours?: number;
+    state?: string;
 }
 
 export interface FileResponse {

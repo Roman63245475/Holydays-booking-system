@@ -262,6 +262,43 @@ public class AccuralService
         return month_rate * days / DateTime.DaysInMonth(period_start.Year, period_start.Month);
     }
 
+    // the earned total (rounded, like earned_holiday_hours) the account will have once every day up to and including
+    // accrue_until is accrued: the months already accrued + the open month + the future months, each with the schedule
+    // and rules of its own month, the total rounded once - exactly what next_month will store.
+    // histories = all histories of the account; empty for an account that does not exist yet (a future earning
+    // period), then accrual starts on its earning_period_start. never accrues past earning_period_end.
+    // used by the 31 August debt check (RequestValidator) and the balance on a future date (ProjectionService)
+    public static decimal project_earned_total(HolidayAccount account, IReadOnlyCollection<HolidayHistory> histories,
+        DateOnly accrue_until, List<Schedule> schedules)
+    {
+        if (accrue_until > account.earning_period_end)
+        {
+            accrue_until = account.earning_period_end;
+        }
+
+        // the newest history is the month that is accrued next (accrued = 0), every month before it is in earned
+        DateOnly open_start = histories.Count > 0 ? histories.Max(h => h.period_start) : account.earning_period_start;
+
+        decimal exact_total = 0;
+        foreach (HolidayHistory h in histories.Where(h => h.period_start < open_start))
+        {
+            exact_total += get_exact_accrual(account, h.period_start, h.period_end, schedules);
+        }
+
+        for (DateOnly month_start = open_start; month_start <= accrue_until;
+             month_start = new DateOnly(month_start.Year, month_start.Month, 1).AddMonths(1))
+        {
+            DateOnly month_end = HolidayParameters.last_day_of_month(month_start.Year, month_start.Month);
+            if (month_end > accrue_until)
+            {
+                month_end = accrue_until;
+            }
+            exact_total += get_exact_accrual(account, month_start, month_end, schedules);
+        }
+
+        return Math.Round(exact_total, 2, MidpointRounding.AwayFromZero);
+    }
+
     // earning period is over when the last history month reached the end of the earning period
     // (law: 31 August, agreed: 31 December)
     private bool is_earning_period_ended(HolidayAccount holiday)
